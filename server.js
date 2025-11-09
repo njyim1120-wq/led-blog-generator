@@ -604,7 +604,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.post('/api/generate', upload.array('images', 20), async (req, res) => {
+app.post('/api/generate', upload.array('images'), async (req, res) => {
   try {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('📨 포스팅 생성 요청');
@@ -954,3 +954,4 @@ app.listen(PORT, () => {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
 });
+
