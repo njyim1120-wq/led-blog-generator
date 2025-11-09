@@ -845,7 +845,7 @@
                     }
                 }
 
-                const response = await fetch('http://localhost:3000/api/generate', {
+                const response = await fetch('/api/generate', {
                     method: 'POST',
                     body: formData
                     // Content-Type 헤더는 자동 설정됨 (multipart/form-data; boundary=...)
@@ -1098,7 +1098,7 @@
             
             try {
                 // ⚡ 스트리밍 API 호출
-                const response = await fetch('http://localhost:3000/api/revise-stream', {
+                const response = await fetch('/api/revise-stream', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -1349,7 +1349,7 @@
             
             try {
                 // ⚡ 스트리밍 API 호출
-                const response = await fetch('http://localhost:3000/api/revise-stream', {
+                const response = await fetch('/api/revise-stream', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
