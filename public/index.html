@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LED 블로그 콘텐츠 자동 생성 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .loader { 
+            border: 4px solid #f3f3f3; 
+            border-top: 4px solid #9333ea; 
+            border-radius: 50%; 
+            width: 40px; 
+            height: 40px; 
+            animation: spin 1s linear infinite; 
+        }
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            transition: all 0.3s;
+        }
+        .drop-zone.drag-over {
+            border-color: #9333ea;
+            background-color: #faf5ff;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
+
+    <!-- 헤더 -->
+    <header class="bg-gradient-to-r from-purple-900 to-purple-700 text-white py-6 shadow-lg">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center gap-3">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <div>
+                    <h1 class="text-3xl font-bold">LED 블로그 콘텐츠 자동 생성 시스템</h1>
+                    <p class="text-purple-200 text-sm mt-1">v8.2 | 레이아웃 확장 + 확정 후 수정 + 누적 수정 ⚡</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            
+            <!-- 왼쪽: 입력 폼 -->
+            <div id="left-panel" class="lg:col-span-2 space-y-6">
+                
+                <!-- 포스팅 타입 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-purple-900 mb-4">포스팅 타입</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="setPostingType('info')" id="btn-info" class="p-4 rounded-lg border-2 border-gray-200 hover:border-purple-300 transition-all">
+                            <div class="font-bold mb-1">정보형</div>
+                            <div class="text-sm text-gray-600">지식/가이드 중심</div>
+                        </button>
+                        <button onclick="setPostingType('case')" id="btn-case" class="p-4 rounded-lg border-2 border-purple-600 bg-purple-50 text-purple-900 transition-all">
+                            <div class="font-bold mb-1">사례형</div>
+                            <div class="text-sm text-gray-600">시공 사례 중심</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 기본 정보 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-purple-900 mb-4">기본 정보</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            메인키워드 <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="keyword" placeholder="예: 송도LED조명" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    </div>
+
+                    <div id="case-fields">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                단지명 <span class="text-red-500">*</span>
+                            </label>
+                            <input type="text" id="complexName" placeholder="예: 송도 힐스테이트" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 엑셀 업로드 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-purple-900 mb-4">공간 데이터 입력</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            엑셀 파일 업로드 ⭐ 추천
+                        </label>
+                        <div id="excel-drop-zone" class="drop-zone rounded-lg p-8 text-center cursor-pointer">
+                            <input type="file" id="excel-input" accept=".xlsx,.xls" class="hidden">
+                            <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <p class="text-gray-600 font-medium mb-2">📁 엑셀 파일을 드래그하거나 클릭하여 업로드</p>
+                            <p class="text-sm text-gray-500 mb-1">공간별 시공유형, 등기구, 제품, 소비전력, 조도</p>
+                            <p class="text-xs text-purple-600 mb-3">✨ 추가작업 정보도 함께 입력 가능</p>
+                            <button onclick="downloadTemplate()" class="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                                📥 엑셀 템플릿 다운로드
+                            </button>
+                        </div>
+                        <div id="excel-status" class="hidden mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <p class="text-sm text-green-800 font-medium">✅ 엑셀 데이터를 불러왔습니다!</p>
+                            <p id="excel-summary" class="text-xs text-green-700 mt-1"></p>
+                        </div>
+                    </div>
+
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            불러온 공간 데이터
+                        </label>
+                        <div id="space-data-container" class="space-y-3 max-h-96 overflow-y-auto">
+                            <p class="text-sm text-gray-500 text-center py-4">엑셀을 업로드하면 여기에 표시됩니다</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-4 border-t border-gray-200">
+                        <div class="text-sm font-medium space-y-1">
+                            <div class="flex justify-between">
+                                <span>총 공간 수:</span>
+                                <span id="total-spaces" class="text-purple-600">0개</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>총 절감 전력:</span>
+                                <span id="total-savings" class="text-green-600">0W</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 추가 작업 정보 -->
+                <div id="additional-work-section" class="hidden bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-purple-900 mb-4">추가 작업 정보</h2>
+                    <div id="additional-work-content" class="space-y-2 text-sm">
+                    </div>
+                </div>
+
+                <!-- 시공 정보 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-purple-900 mb-4">시공 정보</h2>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            시공 사유 <span class="text-red-500">*</span>
+                        </label>
+                        <textarea 
+                            id="construction-reason" 
+                            rows="3" 
+                            placeholder="예: 형광등 노후로 깜빡임 발생, 밝기가 부족해 불편하셨다고 하셨습니다."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        ></textarea>
+                        <p class="text-xs text-gray-500 mt-1">💡 복사-붙여넣기 가능 (Ctrl+V)</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            고객 후기/반응 <span class="text-red-500">*</span>
+                        </label>
+                        <textarea 
+                            id="customer-review" 
+                            rows="3" 
+                            placeholder="예: 거실이 정말 밝아져서 만족스럽다고 하셨습니다. 전기세도 많이 줄어들 것 같아 기대된다고..."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        ></textarea>
+                        <p class="text-xs text-gray-500 mt-1">💡 복사-붙여넣기 가능 (Ctrl+V)</p>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            특이사항 (선택사항)
+                        </label>
+                        <textarea 
+                            id="special-note" 
+                            rows="3" 
+                            placeholder="예: 디밍 스위치 교체, 특수 시공 조건, 특별 요청사항 등..."
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                        ></textarea>
+                        <p class="text-xs text-gray-500 mt-1">💡 포스팅에 반영할 특별한 사항이 있다면 입력해주세요</p>
+                    </div>
+                </div>
+
+                <!-- 사진 업로드 -->
+                <div id="photo-section" class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-purple-900 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        사진 업로드
+                        <span class="text-red-500 text-sm">* 필수</span>
+                    </h2>
+                    <div id="photo-drop-zone" class="drop-zone rounded-lg p-8 text-center cursor-pointer">
+                        <input type="file" id="photo-input" multiple accept="image/*" class="hidden">
+                        <svg class="w-12 h-12 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <p class="text-gray-600 font-medium mb-2">📸 사진을 드래그하거나 클릭하여 업로드</p>
+                        <p class="text-sm text-gray-500">설치 전/중/후 사진</p>
+                    </div>
+                    <div id="photo-list" class="mt-4 grid grid-cols-2 gap-3"></div>
+                    <div id="photo-validation" class="mt-4 p-3 bg-gray-50 rounded-lg">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="font-medium text-gray-700">필수 사진:</span>
+                            <div class="flex gap-3">
+                                <span id="check-before" class="text-gray-400">❌ 전</span>
+                                <span id="check-working" class="text-gray-400">❌ 중</span>
+                                <span id="check-after" class="text-gray-400">❌ 후</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 에러 메시지 -->
+                <div id="error-message" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start gap-2">
+                        <svg class="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div class="text-sm text-red-800">
+                            <p class="font-medium mb-1">오류</p>
+                            <p id="error-text"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 생성 버튼 -->
+                <button onclick="generateBlogPost()" id="generate-btn" class="w-full py-4 rounded-lg font-bold text-lg shadow-lg bg-gradient-to-r from-purple-600 to-purple-700 text-white hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    블로그 포스팅 자동 생성
+                </button>
+
+            </div>
+
+            <!-- 오른쪽: 미리보기 & 수정 -->
+            <div id="right-panel" class="lg:col-span-3 space-y-6">
+                
+                <!-- 미리보기/수정 탭 -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <!-- 탭 헤더 -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex gap-2">
+                            <button onclick="switchTab('preview')" id="tab-preview" class="px-4 py-2 rounded-lg font-medium bg-purple-600 text-white">
+                                📖 미리보기
+                            </button>
+                            <button onclick="switchTab('edit')" id="tab-edit" class="hidden px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-600">
+                                ✏️ 수정하기
+                            </button>
+                            <button onclick="switchTab('chat')" id="tab-chat" class="hidden px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-600">
+                                💬 Claude 대화
+                            </button>
+                        </div>
+                        <div id="status-badge" class="hidden px-3 py-1 rounded-full text-xs font-bold"></div>
+                    </div>
+
+                    <!-- 미리보기 탭 -->
+                    <div id="preview-tab" class="bg-gray-50 rounded-lg p-6 min-h-[400px] max-h-[600px] overflow-y-auto">
+                        <div id="preview-content" class="text-center text-gray-400 py-20">
+                            <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <p>정보를 입력하고 생성 버튼을 눌러주세요</p>
+                            <p class="text-sm mt-2">엑셀 업로드로 빠른 입력!</p>
+                        </div>
+                    </div>
+
+                    <!-- 수정 탭 -->
+                    <div id="edit-tab" class="hidden">
+                        <textarea id="edit-content" class="w-full h-[500px] p-4 border border-gray-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-purple-500" placeholder="여기서 포스팅을 수정하세요..."></textarea>
+                        <div class="mt-4 flex gap-2">
+                            <button onclick="applyEdit()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                수정 적용
+                            </button>
+                            <button onclick="cancelEdit()" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 font-medium">
+                                취소
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Claude 대화 탭 (2열 레이아웃) -->
+                    <div id="chat-tab" class="hidden grid grid-cols-2 gap-4">
+                        <!-- 왼쪽: 미리보기 -->
+                        <div class="border-r border-gray-300 pr-4">
+                            <h3 class="text-lg font-bold text-purple-900 mb-3 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                포스팅 미리보기
+                            </h3>
+                            <div id="chat-preview" class="bg-gray-50 rounded-lg p-4 h-[550px] overflow-y-auto text-sm">
+                                <div class="text-center text-gray-400 py-20">
+                                    <p>포스팅을 생성하면 여기에 표시됩니다</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 오른쪽: 채팅창 -->
+                        <div>
+                            <h3 class="text-lg font-bold text-purple-900 mb-3 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                </svg>
+                                Claude와 대화
+                            </h3>
+                            
+                            <!-- ⭐ 수정 요청 목록 -->
+                            <div id="revision-list-panel" class="hidden mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h4 class="font-bold text-sm text-gray-700 flex items-center gap-1">
+                                        📝 수정 요청 목록
+                                        <span id="revision-count" class="text-purple-600 ml-1">(0)</span>
+                                    </h4>
+                                    <button onclick="clearRevisionRequests()" class="text-xs text-red-600 hover:text-red-800">
+                                        전체 삭제
+                                    </button>
+                                </div>
+                                <div id="revision-list" class="space-y-2 max-h-[400px] overflow-y-auto text-sm">
+                                    <!-- 수정 요청 항목들이 여기에 추가됨 -->
+                                </div>
+                            </div>
+                            
+                            <!-- 대화 히스토리 -->
+                            <div id="chat-history" class="bg-gray-50 rounded-lg p-4 h-[400px] overflow-y-auto mb-4 space-y-3">
+                                <div class="text-center text-gray-400 py-20">
+                                    <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                    </svg>
+                                    <p>Claude와 대화하며 포스팅을 수정해보세요</p>
+                                    <p class="text-sm mt-2">예: "후킹 질문을 더 구체적으로 바꿔줘"</p>
+                                </div>
+                            </div>
+                            
+                            <!-- 입력창 -->
+                            <div class="flex gap-2 mb-3">
+                                <input 
+                                    type="text" 
+                                    id="chat-input" 
+                                    placeholder="수정 요청을 입력하세요... (예: 후킹 질문을 더 구체적으로 바꿔줘)" 
+                                    class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                                    onkeypress="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); addRevisionRequest(); }"
+                                >
+                                <button onclick="addRevisionRequest()" id="add-revision-btn" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">
+                                    ➕ 추가
+                                </button>
+                            </div>
+                            
+                            <!-- ⭐ 모든 수정사항 반영 버튼 -->
+                            <button onclick="applyAllRevisions()" id="apply-all-btn" class="hidden w-full py-3 mb-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-bold flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                                🎯 모든 수정사항 한번에 반영
+                            </button>
+                            
+                            <!-- 확정 버튼 -->
+                            <div class="flex gap-2">
+                                <button onclick="finalizeContent()" id="finalize-btn" class="flex-1 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold flex items-center justify-center gap-2">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    ✅ 포스팅 확정
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 다운로드 버튼 -->
+                    <div id="download-buttons" class="hidden mt-4 grid grid-cols-3 gap-3">
+                        <button onclick="downloadMarkdown()" class="py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium text-sm">
+                            📥 마크다운
+                        </button>
+                        <button onclick="downloadHTML()" class="py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium text-sm">
+                            🎨 HTML
+                        </button>
+                        <button onclick="copyToClipboard()" class="py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium text-sm">
+                            📋 복사
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 자가평가 -->
+                <div id="evaluation-panel" class="hidden bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-bold text-purple-900 mb-4 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        자가평가 v2.0
+                    </h2>
+                    <div id="evaluation-content"></div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 푸터 -->
+    <footer class="bg-gray-100 py-6 mt-12">
+        <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
+            <p>LED 블로그 콘텐츠 자동 생성 시스템 v8.2 | 레이아웃 확장 + 확정 후 수정 + 누적 수정 ⚡</p>
+            <p class="mt-1">📐 동적 레이아웃 | 💬 확정 후에도 계속 수정 | 🎯 수정사항 누적 반영</p>
+        </div>
+    </footer>
+
+    <script>
+        let state = {
+            postingType: 'case',
+            keyword: '',
+            complexName: '',
+            spaceData: [],
+            additionalWork: {},
+            constructionReason: '',
+            customerReview: '',
+            specialNote: '',
+            photos: [],
+            generatedContent: '',
+            // ⭐ 수정 대화 관련
+            revisionMode: false,
+            revisionHistory: [],
+            currentRevision: '',
+            // ⭐ Claude 대화 관련
+            chatHistory: [],
+            isFinalized: false,
+            originalData: null,  // 원본 입력 데이터 저장
+            // ⭐ 수정 요청 누적
+            revisionRequests: []  // 수정 요청 배열
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            setupExcelUpload();
+            setupPhotoUpload();
+            updateCaseFields();
+        });
+
+        function setPostingType(type) {
+            state.postingType = type;
+            document.getElementById('btn-info').className = type === 'info' 
+                ? 'p-4 rounded-lg border-2 border-purple-600 bg-purple-50 text-purple-900 transition-all'
+                : 'p-4 rounded-lg border-2 border-gray-200 hover:border-purple-300 transition-all';
+            document.getElementById('btn-case').className = type === 'case'
+                ? 'p-4 rounded-lg border-2 border-purple-600 bg-purple-50 text-purple-900 transition-all'
+                : 'p-4 rounded-lg border-2 border-gray-200 hover:border-purple-300 transition-all';
+            updateCaseFields();
+        }
+
+        function updateCaseFields() {
+            document.getElementById('case-fields').style.display = state.postingType === 'case' ? 'block' : 'none';
+            document.getElementById('photo-section').style.display = state.postingType === 'case' ? 'block' : 'none';
+        }
+
+        function setupExcelUpload() {
+            const dropZone = document.getElementById('excel-drop-zone');
+            const fileInput = document.getElementById('excel-input');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleExcelFile);
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drag-over');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    handleExcelFile({ target: { files: e.dataTransfer.files } });
+                }
+            });
+        }
+
+        function handleExcelFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    if (workbook.SheetNames.includes('공간별 데이터')) {
+                        const sheet1 = workbook.Sheets['공간별 데이터'];
+                        const jsonData = XLSX.utils.sheet_to_json(sheet1);
+
+                        state.spaceData = jsonData.map(row => ({
+                            space: row['공간'] || '',
+                            constructionType: row['시공유형'] || 'LED 리폼',
+                            fixture: row['등기구'] || '',
+                            oldProduct: row['기존제품'] || '',
+                            oldPower: parseInt(row['기존소비전력(W)']) || 0,
+                            newProduct: row['새제품'] || '',
+                            newPower: parseInt(row['새소비전력(W)']) || 0,
+                            oldLux: row['기존조도(lux)'] || '',
+                            newLux: row['새조도(lux)'] || ''
+                        })).filter(item => item.space);
+                    }
+
+                    if (workbook.SheetNames.includes('추가작업')) {
+                        const sheet2 = workbook.Sheets['추가작업'];
+                        const additionalData = XLSX.utils.sheet_to_json(sheet2);
+                        
+                        state.additionalWork = {};
+                        additionalData.forEach(row => {
+                            const key = row['항목'];
+                            const value = row['내용'];
+                            if (key && value) {
+                                state.additionalWork[key] = value;
+                            }
+                        });
+                    }
+
+                    renderSpaceData();
+                    renderAdditionalWork();
+                    
+                    const statusDiv = document.getElementById('excel-status');
+                    const summaryText = document.getElementById('excel-summary');
+                    statusDiv.classList.remove('hidden');
+                    summaryText.textContent = `공간 ${state.spaceData.length}개, 추가작업 ${Object.keys(state.additionalWork).length}개`;
+                    
+                    setTimeout(() => statusDiv.classList.add('hidden'), 5000);
+
+                } catch (error) {
+                    alert('엑셀 파일 읽기 오류: ' + error.message);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function renderSpaceData() {
+            const container = document.getElementById('space-data-container');
+            if (state.spaceData.length === 0) {
+                container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">엑셀을 업로드하면 표시됩니다</p>';
+                updateTotals();
+                return;
+            }
+
+            container.innerHTML = state.spaceData.map((item, index) => `
+                <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-1">
+                            <span class="font-bold text-purple-900">${item.space}</span>
+                            <span class="ml-2 text-xs px-2 py-1 rounded-full ${getConstructionTypeBadge(item.constructionType)}">${item.constructionType}</span>
+                        </div>
+                        <button onclick="removeSpace(${index})" class="text-red-500 hover:text-red-700 text-sm">삭제</button>
+                    </div>
+                    <div class="text-xs text-gray-600 space-y-1">
+                        ${item.fixture ? `<div>등기구: ${item.fixture}</div>` : ''}
+                        <div>기존: ${item.oldProduct} (${item.oldPower}W)</div>
+                        <div>신규: ${item.newProduct} (${item.newPower}W)</div>
+                        <div class="text-green-600 font-medium">절감: ${item.oldPower - item.newPower}W</div>
+                        ${item.oldLux ? `<div class="text-blue-600">조도: ${item.oldLux} → ${item.newLux} lux</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            updateTotals();
+        }
+
+        function getConstructionTypeBadge(type) {
+            const lower = type.toLowerCase();
+            if (lower.includes('리폼')) return 'bg-blue-100 text-blue-800';
+            if (lower.includes('전체') || lower.includes('교체')) return 'bg-green-100 text-green-800';
+            if (lower.includes('실링팬') || lower.includes('팬')) return 'bg-purple-100 text-purple-800';
+            if (lower.includes('디밍')) return 'bg-yellow-100 text-yellow-800';
+            return 'bg-gray-100 text-gray-800';
+        }
+
+        function renderAdditionalWork() {
+            const section = document.getElementById('additional-work-section');
+            const content = document.getElementById('additional-work-content');
+
+            if (Object.keys(state.additionalWork).length === 0) {
+                section.classList.add('hidden');
+                return;
+            }
+
+            section.classList.remove('hidden');
+            content.innerHTML = Object.entries(state.additionalWork)
+                .map(([key, value]) => `
+                    <div class="flex items-start gap-2">
+                        <span class="text-purple-600">•</span>
+                        <div class="flex-1">
+                            <span class="font-medium text-gray-700">${key}:</span>
+                            <span class="text-gray-600">${value}</span>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function updateTotals() {
+            document.getElementById('total-spaces').textContent = `${state.spaceData.length}개`;
+            const totalSavings = state.spaceData.reduce((sum, item) => sum + (item.oldPower - item.newPower), 0);
+            document.getElementById('total-savings').textContent = `${totalSavings}W`;
+        }
+
+        function removeSpace(index) {
+            state.spaceData.splice(index, 1);
+            renderSpaceData();
+        }
+
+        function downloadTemplate() {
+            const sheet1Data = [
+                ['공간', '시공유형', '등기구', '기존제품', '기존소비전력(W)', '새제품', '새소비전력(W)', '기존조도(lux)', '새조도(lux)'],
+                ['거실', 'LED 리폼', '업소 무거운 우리커버 직사각 거실3등 직부', '55W PL형광등 2개 x 3칸', 330, '50W LED 모듈 1개 x 3칸', 150, 655, 2556],
+                ['주방', '전체 교체', '주방등 (새 등기구)', '36W 원형 형광등 2개', 72, '25W LED 일체형 2개', 50, 450, 1200],
+                ['안방', 'LED 리폼', '침실등', '32W 형광등', 32, '20W LED 모듈', 20, 300, 800],
+                ['욕실', '실링팬 설치', '욕실등', '20W', 20, '실링팬 15W', 15, '', '']
+            ];
+
+            const sheet2Data = [
+                ['항목', '내용'],
+                ['디밍스위치 처리', '일반스위치로 교체 (거실, 안방)'],
+                ['스위치 작업', '중고 복원 2개'],
+                ['기타 작업', '배선 정리'],
+                ['특이사항', '기존 등기구 상태 양호']
+            ];
+
+            const wb = XLSX.utils.book_new();
+            const ws1 = XLSX.utils.aoa_to_sheet(sheet1Data);
+            ws1['!cols'] = [
+                { wch: 8 }, { wch: 20 }, { wch: 35 }, { wch: 30 },
+                { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 12 }, { wch: 12 }
+            ];
+            XLSX.utils.book_append_sheet(wb, ws1, '공간별 데이터');
+            
+            const ws2 = XLSX.utils.aoa_to_sheet(sheet2Data);
+            ws2['!cols'] = [{ wch: 20 }, { wch: 50 }];
+            XLSX.utils.book_append_sheet(wb, ws2, '추가작업');
+            
+            XLSX.writeFile(wb, 'LED블로그_템플릿_v2.xlsx');
+        }
+
+        function setupPhotoUpload() {
+            const dropZone = document.getElementById('photo-drop-zone');
+            const fileInput = document.getElementById('photo-input');
+
+            dropZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handlePhotoUpload);
+
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length > 0) {
+                    handlePhotoUpload({ target: { files: e.dataTransfer.files } });
+                }
+            });
+        }
+
+        function handlePhotoUpload(e) {
+            Array.from(e.target.files).forEach(file => {
+                if (!file.type.startsWith('image/')) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    state.photos.push({
+                        id: Date.now() + Math.random(),
+                        name: file.name,
+                        size: file.size,
+                        stage: detectPhotoStage(file.name),
+                        space: detectSpace(file.name),
+                        preview: event.target.result,
+                        file: file  // ⭐ 실제 파일 객체 저장!
+                    });
+                    renderPhotos();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function detectPhotoStage(filename) {
+            const lower = filename.toLowerCase();
+            if (lower.includes('설치전') || lower.includes('before')) return 'before';
+            if (lower.includes('설치중') || lower.includes('작업중') || lower.includes('working')) return 'working';
+            if (lower.includes('설치후') || lower.includes('after')) return 'after';
+            return 'unknown';
+        }
+
+        function detectSpace(filename) {
+            const lower = filename.toLowerCase();
+            if (lower.includes('거실')) return '거실';
+            if (lower.includes('주방')) return '주방';
+            if (lower.includes('안방')) return '안방';
+            if (lower.includes('욕실')) return '욕실';
+            return '미지정';
+        }
+
+        function renderPhotos() {
+            const container = document.getElementById('photo-list');
+            if (state.photos.length === 0) {
+                container.innerHTML = '';
+                updatePhotoValidation();
+                return;
+            }
+
+            container.innerHTML = state.photos.map(photo => `
+                <div class="relative border border-gray-200 rounded-lg p-2">
+                    <img src="${photo.preview}" class="w-full aspect-video object-cover rounded mb-2">
+                    <p class="text-xs font-medium text-gray-700 truncate">${photo.name}</p>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-xs px-2 py-0.5 rounded-full ${getStageBadgeColor(photo.stage)}">${getStageLabel(photo.stage)}</span>
+                        <span class="text-xs text-gray-500">${formatFileSize(photo.size)}</span>
+                    </div>
+                    <button onclick="removePhoto('${photo.id}')" class="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+
+            updatePhotoValidation();
+        }
+
+        function updatePhotoValidation() {
+            const hasBefore = state.photos.some(p => p.stage === 'before');
+            const hasWorking = state.photos.some(p => p.stage === 'working');
+            const hasAfter = state.photos.some(p => p.stage === 'after');
+
+            document.getElementById('check-before').textContent = hasBefore ? '✅ 전' : '❌ 전';
+            document.getElementById('check-before').className = hasBefore ? 'text-green-600' : 'text-gray-400';
+
+            document.getElementById('check-working').textContent = hasWorking ? '✅ 중' : '❌ 중';
+            document.getElementById('check-working').className = hasWorking ? 'text-green-600' : 'text-gray-400';
+
+            document.getElementById('check-after').textContent = hasAfter ? '✅ 후' : '❌ 후';
+            document.getElementById('check-after').className = hasAfter ? 'text-green-600' : 'text-gray-400';
+        }
+
+        function removePhoto(id) {
+            state.photos = state.photos.filter(p => p.id !== parseFloat(id));
+            renderPhotos();
+        }
+
+        function getStageBadgeColor(stage) {
+            const colors = {
+                'before': 'bg-blue-100 text-blue-800',
+                'working': 'bg-yellow-100 text-yellow-800',
+                'after': 'bg-green-100 text-green-800',
+                'unknown': 'bg-gray-100 text-gray-800'
+            };
+            return colors[stage];
+        }
+
+        function getStageLabel(stage) {
+            const labels = {
+                'before': '설치 전',
+                'working': '작업 중',
+                'after': '설치 후',
+                'unknown': '미분류'
+            };
+            return labels[stage];
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        async function generateBlogPost() {
+            state.keyword = document.getElementById('keyword').value;
+            state.complexName = document.getElementById('complexName').value;
+            state.constructionReason = document.getElementById('construction-reason').value;
+            state.customerReview = document.getElementById('customer-review').value;
+            state.specialNote = document.getElementById('special-note').value;
+
+            if (!state.keyword.trim()) {
+                showError('메인키워드를 입력해주세요.');
+                return;
+            }
+
+            if (state.postingType === 'case') {
+                if (!state.complexName.trim()) {
+                    showError('단지명을 입력해주세요.');
+                    return;
+                }
+                if (state.spaceData.length === 0) {
+                    showError('엑셀을 업로드하거나 공간 데이터를 입력해주세요.');
+                    return;
+                }
+                if (!state.constructionReason.trim()) {
+                    showError('시공 사유를 입력해주세요.');
+                    return;
+                }
+                if (!state.customerReview.trim()) {
+                    showError('고객 후기를 입력해주세요.');
+                    return;
+                }
+                
+                const hasBefore = state.photos.some(p => p.stage === 'before');
+                const hasWorking = state.photos.some(p => p.stage === 'working');
+                const hasAfter = state.photos.some(p => p.stage === 'after');
+                if (!hasBefore || !hasWorking || !hasAfter) {
+                    showError('설치 전/중/후 사진을 모두 업로드해주세요.');
+                    return;
+                }
+            }
+
+            try {
+                hideError();
+                showLoading();
+
+                // ⭐ FormData 방식으로 전송 (이미지 파일 포함)
+                const formData = new FormData();
+                
+                // 텍스트 데이터를 JSON 문자열로
+                const dataJson = {
+                    postingType: state.postingType,
+                    keyword: state.keyword,
+                    complexName: state.complexName,
+                    spaceData: state.spaceData,
+                    additionalWork: state.additionalWork,
+                    constructionReason: state.constructionReason,
+                    customerReview: state.customerReview,
+                    specialNote: state.specialNote
+                };
+                formData.append('data', JSON.stringify(dataJson));
+                
+                // 실제 이미지 파일들
+                for (const photo of state.photos) {
+                    if (photo.file) {
+                        formData.append('images', photo.file, photo.name);
+                    }
+                }
+
+                const response = await fetch('http://localhost:3000/api/generate', {
+                    method: 'POST',
+                    body: formData
+                    // Content-Type 헤더는 자동 설정됨 (multipart/form-data; boundary=...)
+                });
+
+                if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
+
+                const data = await response.json();
+                state.generatedContent = data.content;  // ⭐ 단일 필드
+
+                // ⭐ 원본 데이터 저장 (수정 요청 시 사용)
+                state.originalData = {
+                    postingType: state.postingType,
+                    keyword: state.keyword,
+                    complexName: state.complexName,
+                    spaceData: state.spaceData,
+                    additionalWork: state.additionalWork,
+                    constructionReason: state.constructionReason,
+                    customerReview: state.customerReview,
+                    specialNote: state.specialNote
+                };
+
+                showPreview(state.generatedContent);
+                
+                // ⭐ 수정 & Claude 대화 탭 활성화
+                document.getElementById('tab-edit').classList.remove('hidden');
+                document.getElementById('tab-chat').classList.remove('hidden');
+                
+                // ⭐ 상태 업데이트
+                updateStatusBadge('생성 완료', 'bg-blue-500');
+                
+                setTimeout(() => showEvaluation(data.evaluation), 1000);
+
+            } catch (error) {
+                showError(error.message || '포스팅 생성 중 오류가 발생했습니다.');
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('preview-content').innerHTML = `
+                <div class="text-center py-20">
+                    <div class="loader mx-auto mb-4"></div>
+                    <p class="font-medium text-gray-600">포스팅 생성 중...</p>
+                    <p class="text-sm text-gray-500 mt-2">약 30~60초 소요</p>
+                </div>
+            `;
+        }
+
+        function showPreview(content) {
+            document.getElementById('preview-content').innerHTML = `
+                <pre class="whitespace-pre-wrap text-sm bg-white p-4 rounded border border-gray-200 font-mono text-left">${content}</pre>
+            `;
+            // ⭐ 확정된 경우에만 다운로드 버튼 표시
+            if (state.isFinalized) {
+                document.getElementById('download-buttons').classList.remove('hidden');
+            }
+        }
+
+        function showEvaluation(result) {
+            const panel = document.getElementById('evaluation-panel');
+            const content = document.getElementById('evaluation-content');
+
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="border-2 rounded-lg p-4 ${result.level1.pass ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}">
+                        <h3 class="font-bold mb-2">Level 1: 치명적 형식 ${result.level1.pass ? '✅' : '❌'}</h3>
+                    </div>
+                    <div class="border-2 rounded-lg p-4 ${result.level2.pass ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}">
+                        <h3 class="font-bold mb-2">Level 2: 필수 형식 ${result.level2.pass ? '✅' : '⚠️'}</h3>
+                    </div>
+                    <div class="border-2 border-purple-200 bg-purple-50 rounded-lg p-4">
+                        <div class="flex justify-between">
+                            <h3 class="font-bold">Level 3: 품질</h3>
+                            <span class="text-2xl font-bold text-purple-600">${result.level3.overallScore}/100</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            panel.classList.remove('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('error-text').textContent = message;
+            document.getElementById('error-message').classList.remove('hidden');
+            setTimeout(() => document.getElementById('error-message').classList.add('hidden'), 5000);
+        }
+
+        function hideError() {
+            document.getElementById('error-message').classList.add('hidden');
+        }
+
+        // 탭 전환
+        function switchTab(tab) {
+            const previewTab = document.getElementById('preview-tab');
+            const editTab = document.getElementById('edit-tab');
+            const chatTab = document.getElementById('chat-tab');
+            const previewBtn = document.getElementById('tab-preview');
+            const editBtn = document.getElementById('tab-edit');
+            const chatBtn = document.getElementById('tab-chat');
+            const leftPanel = document.getElementById('left-panel');
+            const rightPanel = document.getElementById('right-panel');
+
+            // 모든 탭 숨기기
+            previewTab.classList.add('hidden');
+            editTab.classList.add('hidden');
+            chatTab.classList.add('hidden');
+
+            // 모든 버튼 비활성화 스타일
+            previewBtn.className = 'px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-600';
+            editBtn.className = 'px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-600';
+            chatBtn.className = 'px-4 py-2 rounded-lg font-medium bg-gray-200 text-gray-600';
+
+            // 선택된 탭만 표시
+            if (tab === 'preview') {
+                previewTab.classList.remove('hidden');
+                previewBtn.className = 'px-4 py-2 rounded-lg font-medium bg-purple-600 text-white';
+                // ⭐ 왼쪽 패널 보이기 + 오른쪽 원래 크기
+                leftPanel.classList.remove('hidden');
+                rightPanel.className = 'lg:col-span-3 space-y-6';
+            } else if (tab === 'edit') {
+                editTab.classList.remove('hidden');
+                editBtn.className = 'px-4 py-2 rounded-lg font-medium bg-purple-600 text-white';
+                document.getElementById('edit-content').value = state.generatedContent;
+                // ⭐ 왼쪽 패널 보이기 + 오른쪽 원래 크기
+                leftPanel.classList.remove('hidden');
+                rightPanel.className = 'lg:col-span-3 space-y-6';
+            } else if (tab === 'chat') {
+                chatTab.classList.remove('hidden');
+                chatBtn.className = 'px-4 py-2 rounded-lg font-medium bg-purple-600 text-white';
+                // ⭐ 채팅 탭의 미리보기에 현재 포스팅 내용 표시
+                const chatPreview = document.getElementById('chat-preview');
+                chatPreview.innerHTML = document.getElementById('preview-content').innerHTML;
+                // ⭐⭐ 왼쪽 패널 숨기기 + 오른쪽 전체 확장
+                leftPanel.classList.add('hidden');
+                rightPanel.className = 'lg:col-span-5 space-y-6';
+            }
+        }
+
+        // 수정 적용
+        function applyEdit() {
+            state.generatedContent = document.getElementById('edit-content').value;
+            showPreview(state.generatedContent);
+            switchTab('preview');
+            alert('✅ 수정이 적용되었습니다!');
+        }
+
+        // 수정 취소
+        function cancelEdit() {
+            switchTab('preview');
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 💬 Claude 대화 기능
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        // 대화 메시지 추가
+        function addChatMessage(role, content, revisedContent = null) {
+            const chatHistory = document.getElementById('chat-history');
+            
+            // 첫 메시지면 환영 메시지 제거
+            if (state.chatHistory.length === 0 && !revisedContent) {
+                chatHistory.innerHTML = '';
+            }
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = role === 'user' 
+                ? 'flex justify-start' 
+                : 'flex justify-end';
+            
+            const bubble = document.createElement('div');
+            bubble.className = role === 'user'
+                ? 'bg-blue-100 text-gray-800 px-4 py-3 rounded-lg max-w-[80%] shadow'
+                : 'bg-purple-600 text-white px-4 py-3 rounded-lg max-w-[80%] shadow';
+            
+            if (role === 'user') {
+                bubble.innerHTML = `<div class="flex items-start gap-2">
+                    <span class="font-bold">👤</span>
+                    <div class="whitespace-pre-wrap">${escapeHtml(content)}</div>
+                </div>`;
+            } else {
+                // ⭐ 현재 인덱스 고정 (push 전에 계산)
+                const currentIndex = state.chatHistory.length;
+                
+                bubble.innerHTML = `<div class="flex items-start gap-2">
+                    <span class="font-bold">🤖</span>
+                    <div>
+                        <div class="whitespace-pre-wrap mb-3">${escapeHtml(content)}</div>
+                        ${revisedContent ? `
+                            <button onclick="applyChatRevision(${currentIndex})" 
+                                    class="mt-2 px-4 py-2 bg-white text-purple-600 rounded font-medium hover:bg-purple-50 transition-colors">
+                                ✅ 이 수정사항 적용하기
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>`;
+            }
+            
+            messageDiv.appendChild(bubble);
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            // 히스토리에 저장 (자동 적용 시에만)
+            if (!revisedContent || role === 'user') {
+                state.chatHistory.push({ role, content, revisedContent });
+                console.log('메시지 히스토리 저장:', role, '인덱스:', state.chatHistory.length - 1);
+            }
+        }
+
+        // 사용자 메시지 전송
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            // ⭐ 확정 후에도 수정 가능하도록 isFinalized 체크 제거
+            
+            // 사용자 메시지 추가
+            addChatMessage('user', message);
+            input.value = '';
+            
+            // 버튼 비활성화
+            const sendBtn = document.getElementById('chat-send-btn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '답변 중...';
+            
+            // ⭐ Claude 응답 말풍선 미리 생성 (스트리밍용)
+            const chatHistory = document.getElementById('chat-history');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex justify-end';
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'bg-purple-600 text-white px-4 py-3 rounded-lg max-w-[80%] shadow';
+            bubble.innerHTML = `
+                <div class="flex items-start gap-2">
+                    <span class="font-bold">🤖</span>
+                    <div>
+                        <div id="streaming-text" class="whitespace-pre-wrap mb-3">
+                            <span class="inline-block animate-pulse">●</span>
+                        </div>
+                        <button id="streaming-apply-btn" class="hidden mt-2 px-4 py-2 bg-white text-purple-600 rounded font-medium hover:bg-purple-50 transition-colors">
+                            ✅ 이 수정사항 적용하기
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            messageDiv.appendChild(bubble);
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            try {
+                // ⚡ 스트리밍 API 호출
+                const response = await fetch('http://localhost:3000/api/revise-stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        currentContent: state.generatedContent,
+                        revisionRequest: message,
+                        chatHistory: state.chatHistory,
+                        originalData: state.originalData
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('수정 요청 실패');
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let explanation = '';
+                let revisedContent = '';
+                let streamingTextDiv = document.getElementById('streaming-text');
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'chunk') {
+                                    // ⚡ 실시간으로 텍스트 추가
+                                    explanation += data.text;
+                                    streamingTextDiv.textContent = explanation;
+                                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                                } else if (data.type === 'done') {
+                                    // 완료
+                                    explanation = data.explanation;
+                                    revisedContent = data.revisedContent;
+                                    streamingTextDiv.textContent = explanation;
+                                    
+                                    // ⭐ 현재 인덱스 고정 (push 전에 계산)
+                                    const currentIndex = state.chatHistory.length;
+                                    
+                                    // 적용 버튼 표시
+                                    const applyBtn = document.getElementById('streaming-apply-btn');
+                                    applyBtn.classList.remove('hidden');
+                                    applyBtn.onclick = () => applyChatRevision(currentIndex);
+                                    
+                                    // 히스토리에 저장
+                                    state.chatHistory.push({ 
+                                        role: 'assistant', 
+                                        content: explanation, 
+                                        revisedContent 
+                                    });
+                                    
+                                    console.log('히스토리 저장 완료. 인덱스:', currentIndex, 'revisedContent 길이:', revisedContent.length);
+                                } else if (data.type === 'error') {
+                                    throw new Error(data.message);
+                                }
+                            } catch (e) {
+                                // JSON 파싱 에러 무시
+                            }
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ 수정 요청 중 오류가 발생했습니다.');
+                messageDiv.remove();  // 에러 시 말풍선 제거
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '전송';
+            }
+        }
+
+        // Claude의 수정사항 적용
+        function applyChatRevision(index) {
+            console.log('applyChatRevision 호출:', index, 'chatHistory length:', state.chatHistory.length);
+            const chat = state.chatHistory[index];
+            console.log('chat:', chat);
+            
+            if (chat && chat.revisedContent) {
+                console.log('revisedContent 있음, 길이:', chat.revisedContent.length);
+                state.generatedContent = chat.revisedContent;
+                
+                // 메인 미리보기 탭 업데이트
+                showPreview(state.generatedContent);
+                
+                // ⭐ 채팅 탭의 미리보기도 업데이트 (HTML 이스케이프 처리)
+                const chatPreview = document.getElementById('chat-preview');
+                const escapedContent = document.createElement('div');
+                escapedContent.textContent = state.generatedContent;
+                chatPreview.innerHTML = `<pre class="whitespace-pre-wrap text-sm bg-white p-4 rounded border border-gray-200 font-mono text-left">${escapedContent.innerHTML}</pre>`;
+                
+                console.log('미리보기 업데이트 완료');
+                
+                // 상태 업데이트
+                updateStatusBadge('수정됨', 'bg-yellow-500');
+                
+                alert('✅ 수정사항이 적용되었습니다!');
+            } else {
+                console.error('revisedContent가 없습니다!', chat);
+                alert('❌ 수정사항을 찾을 수 없습니다. 다시 시도해주세요.');
+            }
+        }
+
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        // 🎯 수정사항 누적 시스템
+        // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        // ⭐ 수정 요청 추가
+        function addRevisionRequest() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            
+            if (!message) {
+                alert('수정 요청을 입력해주세요.');
+                return;
+            }
+            
+            // 수정 요청 추가
+            state.revisionRequests.push({
+                id: Date.now(),
+                text: message
+            });
+            
+            // 입력창 초기화
+            input.value = '';
+            
+            // UI 업데이트
+            updateRevisionList();
+            
+            // 안내 메시지
+            if (state.revisionRequests.length === 1) {
+                alert('✅ 수정 요청이 추가되었습니다!\n계속 요청을 추가하거나, "모든 수정사항 한번에 반영" 버튼을 눌러주세요.');
+            }
+        }
+
+        // ⭐ 수정 요청 목록 업데이트
+        function updateRevisionList() {
+            const listPanel = document.getElementById('revision-list-panel');
+            const list = document.getElementById('revision-list');
+            const count = document.getElementById('revision-count');
+            const applyAllBtn = document.getElementById('apply-all-btn');
+            const chatHistory = document.getElementById('chat-history');
+            
+            if (state.revisionRequests.length === 0) {
+                // 목록이 없으면 → 목록 숨기고, 대화 히스토리 보이기
+                listPanel.classList.add('hidden');
+                applyAllBtn.classList.add('hidden');
+                chatHistory.classList.remove('hidden');
+                return;
+            }
+            
+            // 목록이 있으면 → 목록 보이고, 대화 히스토리 숨기기
+            listPanel.classList.remove('hidden');
+            applyAllBtn.classList.remove('hidden');
+            chatHistory.classList.add('hidden');
+            
+            // 카운트 업데이트
+            count.textContent = `(${state.revisionRequests.length})`;
+            
+            // 목록 렌더링
+            list.innerHTML = state.revisionRequests.map((req, index) => `
+                <div class="flex items-start gap-2 bg-white p-2 rounded border border-yellow-300">
+                    <span class="font-bold text-purple-600 flex-shrink-0">${index + 1}.</span>
+                    <span class="flex-1 text-gray-700">${escapeHtml(req.text)}</span>
+                    <button onclick="removeRevisionRequest(${req.id})" class="text-red-500 hover:text-red-700 flex-shrink-0">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // ⭐ 수정 요청 제거
+        function removeRevisionRequest(id) {
+            state.revisionRequests = state.revisionRequests.filter(r => r.id !== id);
+            updateRevisionList();
+        }
+
+        // ⭐ 모든 수정 요청 초기화
+        function clearRevisionRequests() {
+            if (confirm('모든 수정 요청을 삭제하시겠습니까?')) {
+                state.revisionRequests = [];
+                updateRevisionList();
+            }
+        }
+
+        // ⭐⭐ 모든 수정사항 한번에 반영
+        async function applyAllRevisions() {
+            if (state.revisionRequests.length === 0) {
+                alert('수정 요청이 없습니다.');
+                return;
+            }
+            
+            // 확인 메시지
+            if (!confirm(`${state.revisionRequests.length}개의 수정사항을 한번에 반영하시겠습니까?`)) {
+                return;
+            }
+            
+            // 버튼 비활성화
+            const applyAllBtn = document.getElementById('apply-all-btn');
+            const addRevisionBtn = document.getElementById('add-revision-btn');
+            applyAllBtn.disabled = true;
+            addRevisionBtn.disabled = true;
+            applyAllBtn.innerHTML = `
+                <div class="inline-block animate-spin mr-2">⚙️</div>
+                처리 중...
+            `;
+            
+            // 사용자 메시지 추가 (대화창에)
+            const combinedMessage = `다음 ${state.revisionRequests.length}개의 수정사항을 모두 반영해주세요:\n\n` + 
+                state.revisionRequests.map((req, i) => `${i+1}. ${req.text}`).join('\n');
+            addChatMessage('user', combinedMessage);
+            
+            // ⭐ Claude 응답 말풍선 미리 생성 (스트리밍용)
+            const chatHistory = document.getElementById('chat-history');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex justify-end';
+            
+            const bubble = document.createElement('div');
+            bubble.className = 'bg-purple-600 text-white px-4 py-3 rounded-lg max-w-[80%] shadow';
+            bubble.innerHTML = `
+                <div class="flex items-start gap-2">
+                    <span class="font-bold">🤖</span>
+                    <div>
+                        <div id="streaming-text" class="whitespace-pre-wrap mb-3">
+                            <span class="inline-block animate-pulse">●</span>
+                        </div>
+                        <button id="streaming-apply-btn" class="hidden mt-2 px-4 py-2 bg-white text-purple-600 rounded font-medium hover:bg-purple-50 transition-colors">
+                            ✅ 이 수정사항 적용하기
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            messageDiv.appendChild(bubble);
+            chatHistory.appendChild(messageDiv);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            
+            try {
+                // ⚡ 스트리밍 API 호출
+                const response = await fetch('http://localhost:3000/api/revise-stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        currentContent: state.generatedContent,
+                        revisionRequest: combinedMessage,
+                        chatHistory: state.chatHistory,
+                        originalData: state.originalData
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('수정 요청 실패');
+                }
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let explanation = '';
+                let revisedContent = '';
+                let streamingTextDiv = document.getElementById('streaming-text');
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'chunk') {
+                                    // ⚡ 실시간으로 텍스트 추가
+                                    explanation += data.text;
+                                    streamingTextDiv.textContent = explanation;
+                                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                                } else if (data.type === 'done') {
+                                    // 완료
+                                    explanation = data.explanation;
+                                    revisedContent = data.revisedContent;
+                                    streamingTextDiv.textContent = explanation;
+                                    
+                                    // ⭐ 현재 인덱스 고정 (push 전에 계산)
+                                    const currentIndex = state.chatHistory.length;
+                                    
+                                    // 적용 버튼 표시
+                                    const applyBtn = document.getElementById('streaming-apply-btn');
+                                    applyBtn.classList.remove('hidden');
+                                    applyBtn.onclick = () => applyChatRevision(currentIndex);
+                                    
+                                    // 히스토리에 저장
+                                    state.chatHistory.push({ 
+                                        role: 'assistant', 
+                                        content: explanation, 
+                                        revisedContent 
+                                    });
+                                    
+                                    console.log('히스토리 저장 완료. 인덱스:', currentIndex, 'revisedContent 길이:', revisedContent.length);
+                                    
+                                    // ⭐ 수정 요청 목록 초기화
+                                    state.revisionRequests = [];
+                                    updateRevisionList();
+                                    
+                                    alert('✅ 모든 수정사항이 반영되었습니다!\n"이 수정사항 적용하기" 버튼을 눌러주세요.');
+                                    
+                                } else if (data.type === 'error') {
+                                    throw new Error(data.message);
+                                }
+                            } catch (e) {
+                                // JSON 파싱 에러 무시
+                            }
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ 수정 요청 중 오류가 발생했습니다.');
+                messageDiv.remove();  // 에러 시 말풍선 제거
+            } finally {
+                applyAllBtn.disabled = false;
+                addRevisionBtn.disabled = false;
+                applyAllBtn.innerHTML = `
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    🎯 모든 수정사항 한번에 반영
+                `;
+            }
+        }
+
+        // 포스팅 확정
+        function finalizeContent() {
+            if (confirm('포스팅을 확정하시겠습니까?\n확정 후에도 수정은 가능합니다.')) {
+                state.isFinalized = true;
+                
+                // 다운로드 버튼 활성화
+                document.getElementById('download-buttons').classList.remove('hidden');
+                
+                // 상태 업데이트
+                updateStatusBadge('확정됨', 'bg-green-500');
+                
+                // ⭐ 입력창 비활성화 제거 - 확정 후에도 수정 가능
+                
+                alert('✅ 포스팅이 확정되었습니다!\n다운로드 가능하며, 계속 수정도 가능합니다.');
+                switchTab('preview');
+            }
+        }
+
+        // 상태 배지 업데이트
+        function updateStatusBadge(text, bgClass) {
+            const badge = document.getElementById('status-badge');
+            badge.textContent = text;
+            badge.className = `px-3 py-1 rounded-full text-xs font-bold text-white ${bgClass}`;
+            badge.classList.remove('hidden');
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 마크다운 다운로드
+        function downloadMarkdown() {
+            const blob = new Blob([state.generatedContent], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${state.keyword}_포스팅.md`;
+            a.click();
+        }
+
+        // HTML 다운로드 (즉시 변환!)
+        function downloadHTML() {
+            const html = convertMarkdownToHTML(state.generatedContent);  // ⭐ 즉시 변환
+            const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${state.keyword}_포스팅.html`;
+            a.click();
+        }
+
+        // 마크다운 → HTML 변환 (네이버 블로그 코드 편집기용)
+        function convertMarkdownToHTML(markdown) {
+            const lines = markdown.split('\n');
+            let html = '';
+            let inTable = false;
+            let isTableHeader = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmed = line.trim();
+                
+                // H1 제목
+                if (trimmed.startsWith('# ')) {
+                    const text = trimmed.substring(2);
+                    html += `<h1 style="font-size: 35px; font-weight: 700; color: #4a148c; margin-top: 1.5em; margin-bottom: 0.8em; line-height: 1.2; border-bottom: 3px solid #7b1fa2; padding-bottom: 0.3em; font-family: 'Noto Sans KR', sans-serif;">\n${text}\n</h1>\n<br>\n`;
+                }
+                // ⭐ 후킹 질문 (BLOCKQUOTE) - ## 또는 ### 로 시작하고 ?로 끝나는 것
+                else if ((trimmed.startsWith('## ') || trimmed.startsWith('### ')) && trimmed.endsWith('?')) {
+                    let questionText = trimmed;
+                    if (questionText.startsWith('### ')) {
+                        questionText = questionText.substring(4);
+                    } else if (questionText.startsWith('## ')) {
+                        questionText = questionText.substring(3);
+                    }
+                    html += `<blockquote style="background: #f3e5f5; border-left: 5px solid #4a148c; padding: 20px; font-size: 24px; line-height: 1.8; text-align: center; font-weight: 700; margin: 0; font-style: italic; color: #4a148c; font-family: 'Noto Sans KR', sans-serif;">\n${questionText}\n</blockquote>\n<br>\n`;
+                }
+                // H2 섹션 제목
+                else if (trimmed.startsWith('## ')) {
+                    const text = trimmed.substring(3);
+                    html += `<br><br>\n<h2 style="font-size: 34px; font-weight: 700; color: #ffffff; background-color: #6a1b9a; border: 2px solid #6a1b9a; margin-top: 1.5em; margin-bottom: 0.8em; line-height: 1.2; padding: 0.6em 0.8em; font-family: 'Noto Sans KR', sans-serif;">\n${text}\n</h2>\n<br>\n`;
+                }
+                // H3 하위 제목
+                else if (trimmed.startsWith('### ')) {
+                    const text = trimmed.substring(4);
+                    html += `<br>\n<h3 style="font-size: 24px; font-weight: 700; color: #4a148c; margin-top: 1.5em; margin-bottom: 0.8em; line-height: 1.2; border: 1px solid #f3e5f5; border-left: 5px solid #9c27b0; padding: 0.6em 0.8em; font-family: 'Noto Sans KR', sans-serif;">\n${text}\n</h3>\n<br>\n`;
+                }
+                // Blockquote 처리 (> 로 시작)
+                else if (trimmed.startsWith('> ')) {
+                    let quoteText = trimmed.substring(2).trim();
+                    
+                    // > ## 질문? 형태 처리
+                    if (quoteText.startsWith('### ')) {
+                        quoteText = quoteText.substring(4);
+                    } else if (quoteText.startsWith('## ')) {
+                        quoteText = quoteText.substring(3);
+                    } else if (quoteText.startsWith('# ')) {
+                        quoteText = quoteText.substring(2);
+                    }
+                    
+                    html += `<blockquote style="background: #f3e5f5; border-left: 5px solid #4a148c; padding: 20px; font-size: 24px; line-height: 1.8; text-align: center; font-weight: 700; margin: 0; font-style: italic; color: #4a148c; font-family: 'Noto Sans KR', sans-serif;">\n${quoteText}\n</blockquote>\n`;
+                }
+                // 표 시작
+                else if (trimmed.startsWith('|')) {
+                    if (!inTable) {
+                        html += '<table style="width: 100%; border-collapse: collapse; margin: 1.5em 0; font-family: \'Noto Sans KR\', sans-serif;">\n';
+                        inTable = true;
+                        isTableHeader = true;
+                    }
+                    
+                    const cells = trimmed.split('|').filter(c => c.trim());
+                    
+                    // 구분선 skip
+                    if (cells.some(c => c.includes('---'))) {
+                        isTableHeader = false;
+                        continue;
+                    }
+                    
+                    html += '<tr>\n';
+                    cells.forEach(cell => {
+                        if (isTableHeader) {
+                            html += `<th style="border: 1px solid #e1bee7; padding: 0.5em; text-align: center; background-color: #9c27b0; color: white; font-weight: 700; font-size: 18px;">${cell.trim()}</th>\n`;
+                        } else {
+                            html += `<td style="border: 1px solid #e1bee7; padding: 0.5em; text-align: center; font-size: 19px;">${cell.trim()}</td>\n`;
+                        }
+                    });
+                    html += '</tr>\n';
+                }
+                // 표 끝
+                else if (inTable && !trimmed.startsWith('|')) {
+                    html += '</table>\n<br>\n';
+                    inTable = false;
+                    isTableHeader = false;
+                }
+                // 이미지 표시 - ⭐ 보라색 텍스트로 (회색 박스 제거!)
+                else if (trimmed.includes('[이미지:') || trimmed.includes('[GIF:') || trimmed.includes('[썸네일:') || trimmed.includes('[배너:')) {
+                    html += `<p style="text-align: center; font-weight: 700; color: #9c27b0; font-size: 17px; margin: 20px 0; font-family: 'Noto Sans KR', sans-serif;">\n${trimmed}\n</p>\n<br>\n`;
+                }
+                // 일반 텍스트
+                else if (trimmed) {
+                    // 볼드 처리
+                    let processed = trimmed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                    html += `<p style="font-size: 19px; line-height: 1.8; margin-bottom: 0; color: #333; font-family: 'Noto Sans KR', sans-serif;">\n${processed}\n</p>\n<br>\n`;
+                }
+                // 빈 줄
+                else {
+                    html += '<br>\n';
+                }
+            }
+            
+            if (inTable) html += '</table>\n';
+            
+            return html;
+        }
+
+        // 복사
+        function copyToClipboard() {
+            navigator.clipboard.writeText(state.generatedContent);
+            alert('✅ 클립보드에 복사되었습니다!');
+        }
+    </script>
+
+</body>
+</html>
