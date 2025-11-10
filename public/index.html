@@ -20,6 +20,19 @@
             0% { transform: rotate(0deg); } 
             100% { transform: rotate(360deg); } 
         }
+        @keyframes fade-in {
+            from { 
+                opacity: 0; 
+                transform: translateY(-10px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+        }
         .drop-zone {
             border: 2px dashed #d1d5db;
             transition: all 0.3s;
@@ -27,6 +40,13 @@
         .drop-zone.drag-over {
             border-color: #9333ea;
             background-color: #faf5ff;
+        }
+        #progress-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        #progress-messages::-webkit-scrollbar-thumb {
+            background-color: #d1d5db;
+            border-radius: 3px;
         }
     </style>
 </head>
@@ -41,7 +61,7 @@
                 </svg>
                 <div>
                     <h1 class="text-3xl font-bold">LED 블로그 콘텐츠 자동 생성 시스템</h1>
-                    <p class="text-purple-200 text-sm mt-1">v8.2 | 레이아웃 확장 + 확정 후 수정 + 누적 수정 ⚡</p>
+                    <p class="text-purple-200 text-sm mt-1">v8.3 | 스트리밍 진행 상황 표시 + 자동 검증 & 재작성 ⚡</p>
                 </div>
             </div>
         </div>
@@ -411,8 +431,8 @@
     <!-- 푸터 -->
     <footer class="bg-gray-100 py-6 mt-12">
         <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
-            <p>LED 블로그 콘텐츠 자동 생성 시스템 v8.2 | 레이아웃 확장 + 확정 후 수정 + 누적 수정 ⚡</p>
-            <p class="mt-1">📐 동적 레이아웃 | 💬 확정 후에도 계속 수정 | 🎯 수정사항 누적 반영</p>
+            <p>LED 블로그 콘텐츠 자동 생성 시스템 v8.3 | 스트리밍 진행 상황 표시 + 자동 검증 & 재작성 ⚡</p>
+            <p class="mt-1">📊 실시간 진행 상황 | 🔍 서버 레벨 자동 검증 (Level 1~3) | 🔄 1회 자동 재작성</p>
         </div>
     </footer>
 
@@ -845,39 +865,78 @@
                     }
                 }
 
-                const response = await fetch('/api/generate', {
+                // ⭐⭐⭐ 스트리밍 API 호출 (진행 상황 실시간 표시)
+                const response = await fetch('/api/generate-stream', {
                     method: 'POST',
                     body: formData
-                    // Content-Type 헤더는 자동 설정됨 (multipart/form-data; boundary=...)
                 });
 
                 if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
 
-                const data = await response.json();
-                state.generatedContent = data.content;  // ⭐ 단일 필드
-
-                // ⭐ 원본 데이터 저장 (수정 요청 시 사용)
-                state.originalData = {
-                    postingType: state.postingType,
-                    keyword: state.keyword,
-                    complexName: state.complexName,
-                    spaceData: state.spaceData,
-                    additionalWork: state.additionalWork,
-                    constructionReason: state.constructionReason,
-                    customerReview: state.customerReview,
-                    specialNote: state.specialNote
-                };
-
-                showPreview(state.generatedContent);
+                // ⭐ SSE(Server-Sent Events) 스트리밍 처리
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
                 
-                // ⭐ 수정 & Claude 대화 탭 활성화
-                document.getElementById('tab-edit').classList.remove('hidden');
-                document.getElementById('tab-chat').classList.remove('hidden');
-                
-                // ⭐ 상태 업데이트
-                updateStatusBadge('생성 완료', 'bg-blue-500');
-                
-                setTimeout(() => showEvaluation(data.evaluation), 1000);
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n\n');
+                    buffer = lines.pop(); // 마지막 불완전한 줄 보관
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const data = JSON.parse(line.slice(6));
+                            
+                            if (data.type === 'progress') {
+                                // 진행 상황 표시
+                                addProgressMessage(data.message);
+                            } else if (data.type === 'done') {
+                                // 완료
+                                addProgressMessage('✅ 완료!', true);
+                                
+                                state.generatedContent = data.content;
+                                
+                                // ⭐ 원본 데이터 저장 (수정 요청 시 사용)
+                                state.originalData = {
+                                    postingType: state.postingType,
+                                    keyword: state.keyword,
+                                    complexName: state.complexName,
+                                    spaceData: state.spaceData,
+                                    additionalWork: state.additionalWork,
+                                    constructionReason: state.constructionReason,
+                                    customerReview: state.customerReview,
+                                    specialNote: state.specialNote
+                                };
+                                
+                                showPreview(state.generatedContent);
+                                
+                                // ⭐ 수정 & Claude 대화 탭 활성화
+                                document.getElementById('tab-edit').classList.remove('hidden');
+                                document.getElementById('tab-chat').classList.remove('hidden');
+                                
+                                // ⭐ 상태 업데이트
+                                updateStatusBadge('생성 완료', 'bg-blue-500');
+                                
+                                // 통계 로그
+                                if (data.stats) {
+                                    console.log('📊 통계:', data.stats);
+                                    console.log('🔄 시도 횟수:', data.attempts);
+                                    if (data.remainingIssues && data.remainingIssues.length > 0) {
+                                        console.log('⚠️ 남은 문제:', data.remainingIssues);
+                                    }
+                                }
+                                
+                            } else if (data.type === 'error') {
+                                // 에러
+                                addProgressMessage(`❌ 에러: ${data.message}`, true);
+                                throw new Error(data.message);
+                            }
+                        }
+                    }
+                }
 
             } catch (error) {
                 showError(error.message || '포스팅 생성 중 오류가 발생했습니다.');
@@ -886,12 +945,39 @@
 
         function showLoading() {
             document.getElementById('preview-content').innerHTML = `
-                <div class="text-center py-20">
+                <div class="text-center py-10">
                     <div class="loader mx-auto mb-4"></div>
-                    <p class="font-medium text-gray-600">포스팅 생성 중...</p>
-                    <p class="text-sm text-gray-500 mt-2">약 30~60초 소요</p>
+                    <p class="font-bold text-gray-800 text-lg mb-2">포스팅 생성 중...</p>
+                    <div id="progress-messages" class="mt-6 space-y-2 text-left max-w-2xl mx-auto bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                        <div class="text-sm text-gray-500 italic">진행 상황이 실시간으로 표시됩니다...</div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-4">예상 시간: 30~60초</p>
                 </div>
             `;
+        }
+        
+        function addProgressMessage(message, isComplete = false) {
+            const container = document.getElementById('progress-messages');
+            if (!container) return;
+            
+            // 첫 메시지면 초기화
+            if (container.querySelector('.italic')) {
+                container.innerHTML = '';
+            }
+            
+            const div = document.createElement('div');
+            div.className = isComplete ? 'text-sm text-green-600 font-medium animate-fade-in' : 'text-sm text-blue-600 animate-fade-in';
+            div.textContent = message;
+            
+            // 이전 메시지들을 회색으로
+            const prevMessages = container.querySelectorAll('.text-blue-600');
+            prevMessages.forEach(msg => {
+                msg.classList.remove('text-blue-600');
+                msg.classList.add('text-gray-500');
+            });
+            
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
         }
 
         function showPreview(content) {
@@ -1085,9 +1171,7 @@
                         <div id="streaming-text" class="whitespace-pre-wrap mb-3">
                             <span class="inline-block animate-pulse">●</span>
                         </div>
-                        <button id="streaming-apply-btn" class="hidden mt-2 px-4 py-2 bg-white text-purple-600 rounded font-medium hover:bg-purple-50 transition-colors">
-                            ✅ 이 수정사항 적용하기
-                        </button>
+                        <div id="streaming-button-container"></div>
                     </div>
                 </div>
             `;
@@ -1147,10 +1231,14 @@
                                     // ⭐ 현재 인덱스 고정 (push 전에 계산)
                                     const currentIndex = state.chatHistory.length;
                                     
-                                    // 적용 버튼 표시
-                                    const applyBtn = document.getElementById('streaming-apply-btn');
-                                    applyBtn.classList.remove('hidden');
-                                    applyBtn.onclick = () => applyChatRevision(currentIndex);
+                                    // 적용 버튼 동적 생성 (각 메시지마다 독립적)
+                                    const buttonContainer = document.getElementById('streaming-button-container');
+                                    buttonContainer.innerHTML = `
+                                        <button onclick="applyChatRevision(${currentIndex})" 
+                                                class="mt-2 px-4 py-2 bg-white text-purple-600 rounded font-medium hover:bg-purple-50 transition-colors">
+                                            ✅ 이 수정사항 적용하기
+                                        </button>
+                                    `;
                                     
                                     // 히스토리에 저장
                                     state.chatHistory.push({ 
@@ -1336,9 +1424,7 @@
                         <div id="streaming-text" class="whitespace-pre-wrap mb-3">
                             <span class="inline-block animate-pulse">●</span>
                         </div>
-                        <button id="streaming-apply-btn" class="hidden mt-2 px-4 py-2 bg-white text-purple-600 rounded font-medium hover:bg-purple-50 transition-colors">
-                            ✅ 이 수정사항 적용하기
-                        </button>
+                        <div id="streaming-button-container"></div>
                     </div>
                 </div>
             `;
@@ -1398,10 +1484,14 @@
                                     // ⭐ 현재 인덱스 고정 (push 전에 계산)
                                     const currentIndex = state.chatHistory.length;
                                     
-                                    // 적용 버튼 표시
-                                    const applyBtn = document.getElementById('streaming-apply-btn');
-                                    applyBtn.classList.remove('hidden');
-                                    applyBtn.onclick = () => applyChatRevision(currentIndex);
+                                    // 적용 버튼 동적 생성 (각 메시지마다 독립적)
+                                    const buttonContainer = document.getElementById('streaming-button-container');
+                                    buttonContainer.innerHTML = `
+                                        <button onclick="applyChatRevision(${currentIndex})" 
+                                                class="mt-2 px-4 py-2 bg-white text-purple-600 rounded font-medium hover:bg-purple-50 transition-colors">
+                                            ✅ 이 수정사항 적용하기
+                                        </button>
+                                    `;
                                     
                                     // 히스토리에 저장
                                     state.chatHistory.push({ 
