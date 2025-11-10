@@ -42,20 +42,18 @@ class GuidelineManager {
     try {
       // ⭐⭐⭐ 0. 메인 지침서 (최우선!)
       const files = {
-        mainGuideline: '0__메인지침서_v8_2_통합본.md', // ⭐⭐⭐ NEW!
-        
-        // 1~10. 보조 가이드
-        hooking: '1__후킹_질문_마스터_가이드_v3_0.md',
-        expressions: '2__유사문서_방지_표현_라이브러리_v1_1.md',
-        company: '3__업체정보_v1_1_수정본.md',
-        ledLife: '4__LED수명설명_v1_1_완전판.md',
-        ledTech: '5__LED리폼_기술사양서_v2_4_수정본.md',
-        checklist: '6__체크리스트_빠른참조_v1_4_완전판.md',
-        html: '7__HTML_스타일_가이드_v1_1.md',
-        prohibited: '8__금지표현_자동체크_v1_2_완전판.md',
-        rotation: '9__포스팅별_표현_순환_가이드.md',
-        evaluation: '10__자가평가_시스템_v2_0_완전판.md'
-      };
+  mainGuideline: '0__main_guideline_v8_2.md',
+  hooking: '1__hooking_questions_v3_0.md',
+  expressions: '2__expression_library_v1_1.md',
+  company: '3__company_info_v1_1.md',
+  ledLife: '4__led_lifespan_v1_1.md',
+  ledTech: '5__led_tech_specs_v2_4.md',
+  checklist: '6__checklist_v1_4.md',
+  html: '7__html_style_guide_v1_1.md',
+  prohibited: '8__prohibited_expressions_v1_2.md',
+  rotation: '9__rotation_guide.md',
+  evaluation: '10__self_evaluation_v2_0.md'
+};
 
       for (const [key, filename] of Object.entries(files)) {
         const filePath = path.join(this.guidelinesPath, filename);
@@ -1551,5 +1549,6 @@ app.listen(PORT, () => {
   console.log('   ⚡ 스트리밍 실시간 응답');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 });
+
 
 
