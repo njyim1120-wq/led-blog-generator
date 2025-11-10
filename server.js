@@ -42,7 +42,7 @@ class GuidelineManager {
     try {
       // ⭐⭐⭐ 0. 메인 지침서 (최우선!)
       const files = {
-        mainGuideline: '0__메인지침서_v8_2_완전판.txt', // ⭐⭐⭐ NEW!
+        mainGuideline: '0__메인지침서_v8_2_통합본.md', // ⭐⭐⭐ NEW!
         
         // 1~10. 보조 가이드
         hooking: '1__후킹_질문_마스터_가이드_v3_0.md',
@@ -1551,4 +1551,5 @@ app.listen(PORT, () => {
   console.log('   ⚡ 스트리밍 실시간 응답');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 });
+
 
