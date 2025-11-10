@@ -1,14 +1,17 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 🚀 네이버 블로그 자동 생성 서버 v4.1 (스트리밍 + 레이아웃 개선)
+// 🚀 네이버 블로그 자동 생성 서버 v4.6.1 (이미지 분석 강화!)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📌 마크다운만 생성 (50%+ 속도 향상!) ⚡⚡⚡
-// 🖼️ 후킹 질문 형식 수정 (> ## 금지)
-// ✨ 특이사항 입력란 추가
-// 🎯 특이사항 활용 지침 강화
-// 💬 Claude 대화로 포스팅 수정 기능 추가
-// ⚡ 스트리밍으로 실시간 응답 (빠른 속도!)
-// 📅 생성: 2025-11-09
-// 📂 호환: frontend_v8.1_개선.html
+// ⭐⭐⭐ NEW: 이미지 분석 명시적 강화! (현장감 UP!)
+// ⭐⭐⭐ NEW: 구체적인 이미지 묘사 지시!
+// ⭐⭐⭐ NEW: Before/After 비교 시각화!
+// ✅ Claude 자가평가 (14개 항목)
+// ✅ 서버 레벨 자동 검증 (이중 안전장치)
+// ✅ 1회 자동 재작성
+// ✅ 평가 결과 프론트엔드 표시
+// 🎯 퀄리티 목표: 98%+ (이미지 분석 + 자가평가 + 서버 검증!)
+// ⏱️ 최대 시간: 60초 (1차 30초 + 2차 30초)
+// 📅 생성: 2025-11-10 (v4.6 기반)
+// 📂 호환: frontend_v8.3_스트리밍_로컬테스트용.html
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 require('dotenv').config();
@@ -17,12 +20,206 @@ const Anthropic = require('@anthropic-ai/sdk');
 const multer = require('multer');
 const path = require('path');
 const cors = require('cors');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// 📋 핵심 규칙 (11개 파일에서 추출 - 10KB)
+// 📚 가이드라인 파일 로더 v4.3 (메인 지침서 추가!)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+class GuidelineManager {
+  constructor() {
+    this.guidelinesPath = path.join(__dirname, 'guidelines');
+    this.guidelines = {};
+    this.loadAllGuidelines();
+  }
+
+  loadAllGuidelines() {
+    console.log('\n📚 가이드라인 파일 로딩 중...');
+    
+    try {
+      // ⭐⭐⭐ 0. 메인 지침서 (최우선!)
+      const files = {
+        mainGuideline: '0__메인지침서_v8_2_통합본.md', // ⭐⭐⭐ NEW!
+        
+        // 1~10. 보조 가이드
+        hooking: '1__후킹_질문_마스터_가이드_v3_0.md',
+        expressions: '2__유사문서_방지_표현_라이브러리_v1_1.md',
+        company: '3__업체정보_v1_1_수정본.md',
+        ledLife: '4__LED수명설명_v1_1_완전판.md',
+        ledTech: '5__LED리폼_기술사양서_v2_4_수정본.md',
+        checklist: '6__체크리스트_빠른참조_v1_4_완전판.md',
+        html: '7__HTML_스타일_가이드_v1_1.md',
+        prohibited: '8__금지표현_자동체크_v1_2_완전판.md',
+        rotation: '9__포스팅별_표현_순환_가이드.md',
+        evaluation: '10__자가평가_시스템_v2_0_완전판.md'
+      };
+
+      for (const [key, filename] of Object.entries(files)) {
+        const filePath = path.join(this.guidelinesPath, filename);
+        
+        if (fs.existsSync(filePath)) {
+          this.guidelines[key] = fs.readFileSync(filePath, 'utf8');
+          const marker = key === 'mainGuideline' ? '⭐⭐⭐' : '   ✅';
+          console.log(`${marker} ${key}: ${filename} (${Math.round(this.guidelines[key].length / 1024)}KB)`);
+        } else {
+          console.log(`   ⚠️ ${key}: ${filename} - 파일 없음`);
+          this.guidelines[key] = '';
+        }
+      }
+
+      console.log(`\n✅ 가이드라인 로드 완료: ${Object.keys(this.guidelines).length}개`);
+      console.log(`   메인 지침서: ${this.guidelines.mainGuideline ? '로드됨 ⭐⭐⭐' : '없음 ❌'}`);
+      console.log(`   총 크기: ${Math.round(Object.values(this.guidelines).join('').length / 1024)}KB\n`);
+      
+    } catch (error) {
+      console.error('❌ 가이드라인 로드 실패:', error.message);
+      console.error('   기본 규칙으로 폴백합니다.\n');
+    }
+  }
+
+  // 디밍스위치 아파트 확인
+  isDimmingApartment(complexName) {
+    if (!complexName) return false;
+    
+    const dimmingApts = [
+      '퍼스트월드',
+      '엑스포6단지', '엑스포 6단지',
+      '엑스포9단지', '엑스포 9단지',
+      '엑스포10단지', '엑스포 10단지',
+      '센트럴파크1차', '센트럴파크 1차',
+      '센트럴파크2차', '센트럴파크 2차',
+      '웰카운티1단지', '웰카운티 1단지',
+      '웰카운티2단지', '웰카운티 2단지',
+      '웰카운티3단지', '웰카운티 3단지',
+      '웰카운티4단지', '웰카운티 4단지'
+    ];
+
+    return dimmingApts.some(apt => 
+      complexName.replace(/\s/g, '').includes(apt.replace(/\s/g, ''))
+    );
+  }
+
+  // 상황별 필요한 가이드 선택
+  selectRelevantGuidelines(data) {
+    const selected = [];
+    const { postingType, complexName, spaceData } = data;
+
+    // ⭐⭐⭐ 0. 메인 지침서 (항상 최우선 포함!)
+    if (this.guidelines.mainGuideline) {
+      selected.push({
+        name: '📘 메인 지침서 v8.2 통합본',
+        content: this.guidelines.mainGuideline,
+        priority: 'CRITICAL' // ⭐ 최우선
+      });
+    }
+
+    // 1. 항상 필요한 가이드
+    if (this.guidelines.hooking) {
+      selected.push({
+        name: '후킹 질문 가이드',
+        content: this.guidelines.hooking
+      });
+    }
+
+    if (this.guidelines.company) {
+      selected.push({
+        name: '회사 레퍼런스 가이드',
+        content: this.guidelines.company
+      });
+    }
+
+    if (this.guidelines.ledLife) {
+      selected.push({
+        name: 'LED 수명 표현 가이드',
+        content: this.guidelines.ledLife
+      });
+    }
+
+    // 2. 디밍스위치 아파트면 추가
+    if (this.isDimmingApartment(complexName)) {
+      console.log('   🔍 디밍스위치 아파트 감지!');
+      if (this.guidelines.ledTech) {
+        selected.push({
+          name: 'LED 기술사양서 (디밍스위치 주의사항)',
+          content: this.guidelines.ledTech
+        });
+      }
+    }
+
+    // 3. 사례형이면 추가
+    if (postingType === '사례형') {
+      if (this.guidelines.ledTech && !this.isDimmingApartment(complexName)) {
+        selected.push({
+          name: 'LED 기술사양서',
+          content: this.guidelines.ledTech
+        });
+      }
+      
+      // ⭐ 자가평가 시스템 필수!
+      if (this.guidelines.evaluation) {
+        selected.push({
+          name: '자가평가 시스템 v2.0',
+          content: this.guidelines.evaluation,
+          priority: 'HIGH' // ⭐ 높은 우선순위
+        });
+      }
+    }
+
+    // 4. 표현 순환 가이드
+    if (this.guidelines.rotation) {
+      selected.push({
+        name: '표현 순환 가이드',
+        content: this.guidelines.rotation
+      });
+    }
+
+    // 5. 금지표현 체크
+    if (this.guidelines.prohibited) {
+      selected.push({
+        name: '금지표현 체크',
+        content: this.guidelines.prohibited
+      });
+    }
+
+    return selected;
+  }
+
+  // 선택된 가이드를 프롬프트 형식으로 변환
+  formatGuidelines(selected) {
+    if (selected.length === 0) {
+      return '';
+    }
+
+    let formatted = '\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n';
+    formatted += '📚 상세 가이드라인 (상황별 선택)\n';
+    formatted += '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n';
+
+    // 우선순위별 정렬
+    selected.sort((a, b) => {
+      const priorityOrder = { 'CRITICAL': 0, 'HIGH': 1, 'NORMAL': 2 };
+      return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+    });
+
+    selected.forEach((guide, idx) => {
+      const priorityMark = guide.priority === 'CRITICAL' ? ' ⭐⭐⭐' : 
+                          guide.priority === 'HIGH' ? ' ⭐' : '';
+      formatted += `━━━ ${idx + 1}. ${guide.name}${priorityMark} ━━━\n\n`;
+      formatted += guide.content;
+      formatted += '\n\n';
+    });
+
+    return formatted;
+  }
+}
+
+// 가이드라인 매니저 초기화
+const guidelineManager = new GuidelineManager();
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 📋 핵심 규칙 (간단 요약)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 const CORE_GUIDELINES = `
@@ -30,302 +227,11 @@ const CORE_GUIDELINES = `
 📘 네이버 블로그 콘텐츠 작성 핵심 규칙 v8.2
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 최종 업데이트: 2025-11-07
-품질 목표: 75-85%
+품질 목표: 90-98% (메인 지침서 + 자가평가 활용)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1. 페르소나
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 직업: 30년 경력의 네이버 블로그 전문 마케팅 작가
-- 전문성: 전력 절감 · 인테리어 · 시공 후기 콘텐츠
-- 톤: 친근체 + 후기형 (서술형 문장)
-- 목표: "독자가 시공 결과를 내 집 이야기처럼 느끼게"
-
-2. 키워드 사용 규칙 ⭐⭐⭐ 중요!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-메인키워드 횟수:
-- 권장: 5~6회 ⭐⭐⭐
-- 최소: 4회 (이하면 SEO 효과 미흡)
-- 최대: 10회 (초과하면 부자연스러움)
-- 절대 금지: 20회 이상 (키워드 스터핑, 패널티)
-
-배치 위치:
-- 제목: 1회 (필수, 맨 앞)
-- 서론: 1~2회
-- 본론: 2~3회
-- 결론: 1회
-
-3. 후킹 질문 규칙 ⭐⭐⭐ 중요!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-필수 조건:
-- 3개 질문 (정확히 3개)
-- 모두 ?로 끝나야 함 (평서문 절대 금지!)
-- 보편적 궁금증 기반 (특정 사례 금지)
-- 50자 이내
-
-작성 프로세스:
-1. 글의 주제 파악
-2. 그 주제의 보편적 궁금증 도출
-3. 이 글에서 답할 수 있는 질문 선택
-
-✅ 좋은 예시:
-## 디밍 스위치가 있으면 LED 설치가 안 된다는데 정말인가요?
-## 등기구 전체를 교체하지 않고 LED 모듈만 바꿀 수 있나요?
-## 형광등 9개를 LED 3개로 줄여도 밝기는 충분한가요?
-
-⚠️ 형식 주의:
-- 반드시 ## 으로 시작 (> 기호 사용 금지!)
-- H2 제목 형식으로 작성
-- blockquote (>) 사용하지 말 것
-
-❌ 나쁜 예시:
-## 송도 더샵에서 LED 교체를 하셨나요? (특정 사례)
-디밍안정기 고장으로 불이 깜빡였습니다. (평서문)
-
-4. 회사 레퍼런스 (2문단 필수)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-고정 사실 4가지:
-1. 2016년 창업
-2. 송도 아파트 2000세대 이상 시공
-3. 디밍 스위치 / 실링팬 전문
-4. 송도 유일: 디밍스위치 교체 없이 LED 조명 설치 가능
-
-배치 위치:
-- 서론 도입 문단 1~2개
-- [GIF: 업체소개.gif]
-- 회사 레퍼런스 첫 번째 문단
-- [썸네일: 대표이미지.jpg]
-- 회사 레퍼런스 두 번째 문단
-
-⚠️ 디밍 기능 표현 절대 금지! ⭐⭐⭐
-❌ "밝기 조절 기능을 유지하면서"
-❌ "디밍 기능을 유지하면서"
-❌ "밝기 조절이 가능하여"
-
-✅ 올바른 표현:
-"디밍스위치를 일반스위치로 교체하지 않고"
-"스위치 교체 없이"
-"추가 공사 없이"
-"기존 스위치를 그대로 활용하여"
-
-이유: 디밍스위치 + LED = 온/오프만 작동 (밝기 조절 X)
-
-5. LED 수명 표현 규칙 ⭐⭐⭐ 중요!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-배치 위치 (2곳):
-1. 시공 개요 - 소비전력 표 다음
-2. CTA (마무리) - 포스팅 끝
-
-권장 표현:
-✅ "2년 AS 보증으로 안심하고 사용하실 수 있습니다"
-✅ "검증된 제품으로 불량률을 최소화했습니다"
-✅ "2년 무상 AS 기간 동안 조명 관리는 저희가 책임집니다"
-
-절대 금지 표현:
-❌ "LED는 10년 무걱정입니다"
-❌ "LED는 반영구적입니다"
-❌ "50,000시간 = 10년 사용 가능"
-❌ "한 번 설치하면 10년 이상 사용"
-
-6. 고정 이미지 배치 (사례형 4종)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-순서:
-1. 회사 레퍼런스 첫 문단
-2. [GIF: 업체소개.gif]
-3. 회사 레퍼런스 둘째 문단
-4. [썸네일: 대표이미지.jpg]
-5. ## 시공 개요
-6. ## 첫 번째 공간
-7. [GIF: 거실_조도비교.gif]
-8. ### 설치 전/중/후
-9. [배너: 문의배너.jpg] ← 첫 번째 공간 끝에만!
-
-⚠️ 문의 배너는 첫 번째 공간 끝에만!
-두 번째, 세 번째 공간에는 배치 금지!
-
-7. 소비전력 계산 규칙
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-기본 공식:
-- 거실 LED 리폼: 기존의 50% (432W → 216W)
-- 거실 전체 교체: 기존의 40% (432W → 172.8W)
-- 방 LED 리폼: 기존의 50%
-- 방 전체 교체: 기존의 40%
-
-⚠️ 주방 밝기 보강 규칙:
-- 1등 주방: LED 모듈 1개 추가 (25W × 2 = 50W)
-- 2등 주방: LED 모듈 1개 추가 (25W × 3 = 75W)
-- 포스팅 표현: "주방은 작업 공간이라 밝기가 중요하다고 판단하여, LED 모듈을 1개 추가로 설치해 밝기를 보강했습니다."
-
-실링팬:
-- 매입등: 10W × 개수
-- 실링팬: 30W (고정)
-
-8. 사례형 포스팅 구조 (H2 + H3 구조)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-H1 제목
-후킹 질문 3개
-서론 도입
-회사 레퍼런스 2문단
-## 시공 개요 및 소비전력 비교
-   [소비전력 표]
-   LED 수명 언급 1차
-## 거실 LED 리폼 시공
-   [GIF: 거실_조도비교.gif]
-   ### 설치 전
-   ### 작업 중
-   ### 설치 후
-   [배너: 문의배너.jpg] ← 첫 공간 끝에만!
-## 주방 LED 리폼 시공
-   ### 설치 전
-   ### 작업 중
-   ### 설치 후
-마무리
-   LED 수명 언급 2차
-   CTA
-
-⚠️ 실링팬 설치도 동일한 H3 3단계 구조 사용!
-- ### 설치 전
-- ### 작업 중 (보양, 타공, 실링팬 설치)
-- ### 설치 후
-
-9. 작업 중 시공 프로세스 (정확히!)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LED 리폼:
-1. 전원 차단
-2. 확산판 분리
-3. 기존 LED 모듈 철거
-4. 배선 점검
-5. 새 LED 모듈 + LED 전용안정기(SMPS) 장착
-6. 점등 테스트
-
-전체 교체 (형광등):
-1. 전원 차단
-2. 확산판 분리
-3. 기존 형광등 철거
-4. ⭐ 안정기 제거 (형광등 전용 안정기)
-5. 배선 점검
-6. 새 LED 모듈 + LED 전용안정기(SMPS) 장착
-7. 점등 테스트
-
-실링팬:
-1. 보양 작업
-2. 천장 보강 작업
-3. 매입등 타공 및 설치 (소비전력 명시)
-4. 실링팬 설치 (모델명, 브랜드, 사이즈, 색상)
-5. 점등 및 작동 테스트
-
-10. 절대 규칙 체크리스트 ⭐⭐⭐
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-필수 사항:
-□ 제목에 메인키워드 1회 (맨 앞)
-□ 키워드 총 5~6회 (최소 4회, 최대 10회)
-□ 후킹 질문 3개 (모두 ?로 끝)
-□ 후킹 질문이 보편적 궁금증 기반
-□ 회사 레퍼런스 2문단
-□ 디밍 기능 표현 금지 확인
-□ LED 수명 2곳 배치 (시공개요, CTA)
-□ LED 수명 금지표현 없음 ("10년", "반영구")
-□ 고정 이미지 4종 배치
-□ 문의 배너는 첫 공간 끝에만
-□ 사례형은 H3 구조 (전→중→후)
-□ 주방 밝기 보강 언급 (해당시)
-□ 소비전력 표 작성
-□ CTA 포함
-
-11. 금지 사항 ⭐⭐⭐
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-절대 금지:
-❌ 이모지 사용 (😊, 🔧 등)
-❌ 키워드 20회 이상
-❌ 평서문 후킹 질문
-❌ LED 수명 과장 표현
-❌ 디밍 기능 표현
-❌ 문의 배너 중복 배치
-❌ 과장 표현 ("100%", "절대", "완벽", "최고")
-
-12. 문장 작성 원칙
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- 문장 길이: 10~80자 (다양하게 섞기)
-- 단락: 2~3문장 단위 줄바꿈
-- 톤: 친근하고 이해하기 쉬운 서술체
-- 구어체 혼합: "~하죠", "~네요" (10% 이내)
-- 감탄사: "하지만", "그런데", "그래서" (3~5회)
-
-13. CTA (마무리)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-핵심 메시지:
-"우리집 조명 관리 업체를 하나 만드신 것"
-
-포함 요소:
-- 형광등처럼 직접 수리 안 해도 됨
-- 전화 한 통이면 방문
-- 송도 관내 = 빠른 대응
-- 2년 무상 AS
-- 조명 전문 관리
-
-필수 문구:
-"무료 방문 견적 문의는 아래 연락처로 편하게 문의 주세요."
-
-14. HTML 출력 규칙 ⭐⭐⭐ 중요!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-네이버 블로그 코드 편집기용 HTML 생성 시:
-
-핵심 원칙:
-- 모든 스타일은 inline으로 (style 속성)
-- 폰트: Noto Sans KR
-- P 태그: margin-bottom: 0
-- BR 태그로 간격 조절
-
-H1 스타일:
-<h1 style="font-size: 35px; font-weight: 700; color: #4a148c; margin-top: 1.5em; margin-bottom: 0.8em; line-height: 1.2; border-bottom: 3px solid #7b1fa2; padding-bottom: 0.3em; font-family: 'Noto Sans KR', sans-serif;">
-제목
-</h1>
-
-H2 스타일:
-<h2 style="font-size: 34px; font-weight: 700; color: #ffffff; background-color: #6a1b9a; border: 2px solid #6a1b9a; margin-top: 1.5em; margin-bottom: 0.8em; line-height: 1.2; padding: 0.6em 0.8em; font-family: 'Noto Sans KR', sans-serif;">
-섹션 제목
-</h2>
-
-H3 스타일:
-<h3 style="font-size: 24px; font-weight: 700; color: #4a148c; margin-top: 1.5em; margin-bottom: 0.8em; line-height: 1.2; border: 1px solid #f3e5f5; border-left: 5px solid #9c27b0; padding: 0.6em 0.8em; font-family: 'Noto Sans KR', sans-serif;">
-설치 전
-</h3>
-
-본문 P 태그:
-<p style="font-size: 19px; line-height: 1.8; margin-bottom: 0; color: #333; font-family: 'Noto Sans KR', sans-serif;">
-본문 텍스트
-</p>
-
-후킹 질문 (BLOCKQUOTE):
-<blockquote style="background: #f3e5f5; border-left: 5px solid #4a148c; padding: 20px; font-size: 24px; line-height: 1.8; text-align: center; font-weight: 700; margin: 0; font-style: italic; color: #4a148c; font-family: 'Noto Sans KR', sans-serif;">
-질문 내용?
-</blockquote>
-
-표 스타일:
-<table style="width: 100%; border-collapse: collapse; margin: 1.5em 0; font-family: 'Noto Sans KR', sans-serif;">
-  <thead>
-    <tr>
-      <th style="border: 1px solid #e1bee7; padding: 0.5em; text-align: center; background-color: #9c27b0; color: white; font-weight: 700; font-size: 18px;">항목</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="border: 1px solid #e1bee7; padding: 0.5em; text-align: center; font-size: 19px;">내용</td>
-    </tr>
-  </tbody>
-</table>
-
-이미지 표기 (⚠️ 절대 HTML 주석 금지!):
-<p style="text-align: center; font-weight: 700; color: #9c27b0; font-size: 17px; margin: 20px 0; font-family: 'Noto Sans KR', sans-serif;">
-[이미지: 파일명.jpg]
-</p>
-
-BR 규칙:
-- 일반 문장 사이: <br> 1개
-- H2 전: <br><br> 2개
-- 후킹 질문 사이: 붙여서 (BR 없음)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-이 규칙들을 반드시 모두 지켜서 작성하세요!
+⚠️⚠️⚠️ 아래에 메인 지침서 v8.2 통합본이 제공됩니다!
+메인 지침서의 모든 규칙을 철저히 따라야 합니다!
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
@@ -395,10 +301,8 @@ function processImages(files) {
   return files.map(file => {
     const base64Data = file.buffer.toString('base64');
     
-    // ⭐ 한글 파일명 인코딩 수정
     let fileName = file.originalname;
     try {
-      // Buffer를 사용해서 UTF-8로 제대로 디코딩
       fileName = Buffer.from(file.originalname, 'latin1').toString('utf8');
     } catch (e) {
       console.log('⚠️ 파일명 인코딩 변환 실패, 원본 사용:', file.originalname);
@@ -424,9 +328,28 @@ function createTextPrompt(data, images) {
     specialNote
   } = data;
 
-  let prompt = `${CORE_GUIDELINES}\n\n`;
+  // ⭐ 상황별 가이드 선택
+  console.log('\n📚 상황별 가이드 선택 중...');
+  const selectedGuidelines = guidelineManager.selectRelevantGuidelines(data);
+  console.log(`✅ 선택된 가이드: ${selectedGuidelines.length}개`);
+  selectedGuidelines.forEach((g, idx) => {
+    const priorityMark = g.priority === 'CRITICAL' ? ' ⭐⭐⭐' : 
+                        g.priority === 'HIGH' ? ' ⭐' : '';
+    console.log(`   ${idx + 1}. ${g.name}${priorityMark} (${Math.round(g.content.length / 1024)}KB)`);
+  });
+
+  // ⭐ 가이드를 프롬프트 형식으로 변환
+  const formattedGuidelines = guidelineManager.formatGuidelines(selectedGuidelines);
+  const totalGuidelineSize = formattedGuidelines.length;
+  console.log(`\n📏 프롬프트에 추가될 가이드 크기: ${Math.round(totalGuidelineSize / 1024)}KB`);
+
+  // 기본 프롬프트 시작
+  let prompt = `${CORE_GUIDELINES}\n`;
   
-  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  // ⭐ 상세 가이드 추가
+  prompt += formattedGuidelines;
+  
+  prompt += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
   prompt += `📋 사용자 입력 정보\n`;
   prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
   
@@ -435,9 +358,15 @@ function createTextPrompt(data, images) {
   
   if (complexName) {
     prompt += `단지명: ${complexName}\n`;
+    
+    // ⭐ 디밍스위치 아파트 경고
+    if (guidelineManager.isDimmingApartment(complexName)) {
+      prompt += `\n⚠️⚠️⚠️ 디밍스위치 아파트입니다! ⚠️⚠️⚠️\n`;
+      prompt += `절대 금지: "밝기 조절 기능 유지" 같은 표현\n`;
+      prompt += `올바른 표현: "스위치 교체 없이", "추가 공사 없이"\n\n`;
+    }
   }
   
-  // ⭐ 파일명 목록 추가!
   if (images && images.length > 0) {
     prompt += `\n[업로드된 사진 파일명]\n`;
     images.forEach((img, idx) => {
@@ -504,25 +433,75 @@ function createTextPrompt(data, images) {
   prompt += `✍️ 작성 지시\n`;
   prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
   
-  prompt += `위 핵심 규칙과 사용자 입력 정보를 바탕으로 네이버 블로그 포스팅을 작성하세요.\n\n`;
+  prompt += `위의 메인 지침서 v8.2와 상세 가이드라인, 그리고 사용자 입력 정보를 바탕으로\n`;
+  prompt += `네이버 블로그 포스팅을 작성하세요.\n\n`;
   
-  prompt += `⚠️ 절대 규칙 체크리스트를 하나씩 확인하며 작성:\n`;
-  prompt += `□ 제목에 메인키워드 1회 (맨 앞)\n`;
-  prompt += `□ 키워드 총 5~6회 배치\n`;
-  prompt += `□ 후킹 질문 3개 (모두 ?로 끝)\n`;
-  prompt += `□ 회사 레퍼런스 2문단\n`;
-  prompt += `□ 디밍 기능 표현 금지\n`;
-  prompt += `□ LED 수명 2곳 배치\n`;
-  prompt += `□ LED 수명 금지표현 없음\n`;
-  prompt += `□ 고정 이미지 4종 배치\n`;
-  prompt += `□ 사례형은 H3 구조 (전→중→후)\n`;
-  prompt += `□ 소비전력 표 작성\n`;
-  prompt += `□ CTA 포함\n\n`;
+  prompt += `⚠️⚠️⚠️ 메인 지침서 v8.2를 최우선으로 따르세요!\n`;
+  prompt += `메인 지침서의 모든 규칙, 특히 다음 사항들을 철저히 준수하세요:\n`;
+  prompt += `- 메인키워드 "${keyword}" 5~6회 배치 (최소 4회, 최대 10회)\n`;
+  prompt += `- 제목에 메인키워드 맨 앞 배치\n`;
+  prompt += `- 후킹 질문 3개 (모두 ?로 끝)\n`;
+  prompt += `- 회사 레퍼런스 2문단\n`;
+  prompt += `- 디밍 기능 표현 금지\n`;
+  prompt += `- LED 수명 2곳 배치\n`;
+  prompt += `- 고정 이미지 4종 배치\n`;
+  prompt += `- 휴먼라이크 4대 요소 (구어체, 체언 종결, 감탄사, 문장 길이)\n\n`;
   
-  prompt += `⭐⭐⭐ 사진 배치 규칙 (매우 중요!):\n`;
-  prompt += `사진이 첨부된 경우, 각 사진을 설명하기 전에 반드시 [이미지: 파일명.jpg] 형태로 표시하세요.\n`;
-  prompt += `위의 [업로드된 사진 파일명] 목록에 있는 실제 파일명을 정확히 그대로 사용하세요.\n`;
-  prompt += `파일명을 임의로 변경하거나 추측하지 마세요. 목록에 있는 그대로 사용하세요.\n\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `🖼️⭐⭐⭐ 이미지 분석 및 활용 규칙 (매우 중요!)\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `사진이 첨부된 경우, 반드시 다음 규칙을 따르세요:\n\n`;
+  
+  prompt += `1️⃣ 이미지를 실제로 보고 분석하세요! (필수!)\n`;
+  prompt += `   - 업로드된 이미지는 단순한 파일이 아닙니다\n`;
+  prompt += `   - 각 이미지의 내용을 실제로 관찰하고 분석하세요\n`;
+  prompt += `   - 보이는 것을 구체적으로 묘사하세요\n\n`;
+  
+  prompt += `2️⃣ 설치 전 이미지 분석 포인트:\n`;
+  prompt += `   ✅ 기존 조명의 밝기 상태 (어둡다, 흐릿하다, 그림자가 있다 등)\n`;
+  prompt += `   ✅ 조명 색상 (누런 형광등 빛, 차가운 흰빛 등)\n`;
+  prompt += `   ✅ 어두운 영역이 어디인지 (소파 뒤, TV장 옆, 코너 등)\n`;
+  prompt += `   ✅ 공간의 전체적인 분위기\n`;
+  prompt += `   예시: "소파 뒤편과 TV장 주변이 어두워 그림자가 지고 있습니다"\n\n`;
+  
+  prompt += `3️⃣ 작업 중 이미지 분석 포인트:\n`;
+  prompt += `   ✅ 작업자가 무엇을 하고 있는지 (확산판 분리, 배선 작업 등)\n`;
+  prompt += `   ✅ 보이는 부품이나 도구 (LED 모듈, SMPS, 공구 등)\n`;
+  prompt += `   ✅ 천장이나 등기구의 상태\n`;
+  prompt += `   예시: "천장에서 확산판을 분리하고 기존 형광등을 제거하는 모습입니다"\n\n`;
+  
+  prompt += `4️⃣ 설치 후 이미지 분석 포인트:\n`;
+  prompt += `   ✅ 새로운 조명의 밝기 (설치 전과 확실히 비교)\n`;
+  prompt += `   ✅ 빛의 확산 정도 (균일한지, 구석까지 밝은지)\n`;
+  prompt += `   ✅ 색온도의 느낌 (따뜻한지, 시원한지, 자연스러운지)\n`;
+  prompt += `   ✅ 이전에 어두웠던 곳이 밝아졌는지\n`;
+  prompt += `   예시: "이전에 어두웠던 소파 뒤편까지 밝게 비추며 그림자가 사라졌습니다"\n\n`;
+  
+  prompt += `5️⃣ 현장감 있는 묘사 (필수!):\n`;
+  prompt += `   ❌ 나쁜 예: "LED 조명을 설치했습니다"\n`;
+  prompt += `   ✅ 좋은 예: "거실 전체가 환하게 밝아지면서, 이전에는 어두웠던 \n`;
+  prompt += `                소파 뒤편과 TV장 옆까지 빛이 고르게 퍼져 공간이 \n`;
+  prompt += `                넓어 보입니다"\n\n`;
+  
+  prompt += `   ❌ 나쁜 예: "작업을 진행했습니다"\n`;
+  prompt += `   ✅ 좋은 예: "천장에서 확산판을 조심스럽게 분리한 후, 기존 형광등을 \n`;
+  prompt += `                제거하고 안전하게 배선 작업을 진행했습니다"\n\n`;
+  
+  prompt += `6️⃣ Before/After 비교 (설치 후 섹션에서):\n`;
+  prompt += `   - 설치 전 이미지에서 본 것과 설치 후를 직접 비교하세요\n`;
+  prompt += `   - "이전에는 [관찰한 것], 이제는 [개선된 것]" 형태로 작성\n`;
+  prompt += `   예시: "설치 전 어두웠던 거실이 이제는 환하게 밝아졌고, \n`;
+  prompt += `          특히 코너 부분까지 빛이 닿아 공간이 더 넓어 보입니다"\n\n`;
+  
+  prompt += `7️⃣ 이미지 배치 형식:\n`;
+  prompt += `   - 각 이미지를 설명하기 전에 [이미지: 파일명.jpg] 형태로 표시\n`;
+  prompt += `   - 위의 [업로드된 사진 파일명] 목록의 실제 파일명을 정확히 사용\n`;
+  prompt += `   - 파일명을 임의로 변경하거나 추측하지 말 것\n\n`;
+  
+  prompt += `⚠️⚠️⚠️ 핵심: 독자가 현장에 있는 것처럼 생생하게!\n`;
+  prompt += `이미지를 단순히 "배치"만 하지 말고, 실제로 "분석"하고 "묘사"하세요!\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
   
   if (specialNote) {
     prompt += `⭐⭐⭐ 특이사항 반영 규칙 (매우 중요!):\n`;
@@ -533,9 +512,196 @@ function createTextPrompt(data, images) {
     prompt += `특이사항 내용을 그대로 복사하지 말고, 포스팅 톤에 맞게 자연스럽게 재작성하여 반영하세요.\n\n`;
   }
   
+  // ⭐⭐⭐ NEW: H3 관련 주의사항
+  prompt += `⚠️⚠️⚠️ H3 제목 작성 규칙 (매우 중요!):\n`;
+  prompt += `사례형 포스팅에서 "설치 전/중/후" 제목은 다음과 같이 작성하세요:\n`;
+  prompt += `✅ 올바른 예시:\n`;
+  prompt += `### 설치 전\n`;
+  prompt += `### 설치 중\n`;
+  prompt += `### 설치 후\n\n`;
+  prompt += `❌ 잘못된 예시 (절대 금지!):\n`;
+  prompt += `### H3 설치 전  ← "H3" 텍스트 붙이면 안 됨!\n`;
+  prompt += `### H3 설치 중  ← "H3" 텍스트 붙이면 안 됨!\n`;
+  prompt += `### H3 설치 후  ← "H3" 텍스트 붙이면 안 됨!\n\n`;
+  prompt += `"H3"는 마크다운 문법일 뿐, 실제 제목에 포함시키면 안 됩니다!\n\n`;
+  
   prompt += `⭐⭐⭐ 출력 형식:\n`;
   prompt += `마크다운 형식으로 작성하세요.\n`;
   prompt += `HTML은 생성하지 마세요. 오직 마크다운만 출력하세요.\n\n`;
+  
+  // ⭐⭐⭐ NEW: 자가평가 실행 명령 v2.0 완전판!
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `⚠️⚠️⚠️ 작성 완료 후 3단계 자가평가 시스템 v2.0 (필수!)\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `포스팅 작성 완료 후 반드시 다음 3단계 평가를 수행하세요:\n\n`;
+  
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `[Level 1] 치명적 형식 체크 (2개) - 즉시 재작성!\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `1️⃣ LED 수명 금지표현:\n`;
+  prompt += `   - "10년", "반영구", "50,000시간", "평생", "무걱정", "거의 고장 안" 검색\n`;
+  prompt += `   - 1개라도 발견: ❌ 즉시 삭제하고 "2년 AS 보증"으로 교체\n\n`;
+  
+  prompt += `2️⃣ 후킹 질문 물음표:\n`;
+  prompt += `   - 3개 모두 "?"로 끝나는지 확인\n`;
+  prompt += `   - 평서문 1개라도 있으면: ❌ 즉시 수정\n\n`;
+  
+  prompt += `→ Level 1 오류 발견 시: 즉시 수정 후 다음 단계 진행\n\n`;
+  
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `[Level 2] 필수 형식 체크 (6개) - 추가 필요!\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `3️⃣ 사진 업로드 (사례형만):\n`;
+  prompt += `   - 설치 전 최소 1장, 작업 중 최소 2장, 설치 후 최소 2장\n\n`;
+  
+  prompt += `4️⃣ 고정 이미지 4종:\n`;
+  prompt += `   - [GIF: 업체소개.gif], [썸네일: 대표이미지.jpg]\n`;
+  prompt += `   - [GIF: 조도비교.gif], [배너: 문의배너.jpg] (사례형만)\n\n`;
+  
+  prompt += `5️⃣ LED 수명 배치 2곳:\n`;
+  prompt += `   - 소비전력 표 다음 + 포스팅 끝 (2곳)\n\n`;
+  
+  prompt += `6️⃣ 회사 레퍼런스 2문단:\n`;
+  prompt += `   - GIF 위 1문단 + GIF 아래 1문단\n\n`;
+  
+  prompt += `7️⃣ CTA 존재:\n`;
+  prompt += `   - "무료 방문 견적 문의는" + "2년 AS" 포함\n\n`;
+  
+  prompt += `8️⃣ H3 구조 (사례형만):\n`;
+  prompt += `   - "### 설치 전", "### 작업 중", "### 설치 후"\n`;
+  prompt += `   - ❌ "### H3 설치 전" 같은 잘못된 형식 금지!\n\n`;
+  
+  prompt += `→ Level 2 누락 발견 시: 추가 후 다음 단계 진행\n\n`;
+  
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `[Level 3] 핵심 품질 평가 (6개) - 품질 보증! ⭐⭐⭐\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `9️⃣ 후킹 질문 품질:\n`;
+  prompt += `   [프로세스 준수]\n`;
+  prompt += `   - ✅ 입력 정보 분석 → 글의 주제 파악\n`;
+  prompt += `   - ✅ 주제의 보편적 궁금증 10개 이상 도출\n`;
+  prompt += `   - ✅ 글에서 답할 수 있는 것 3개 선택\n`;
+  prompt += `   [답변 가능성]\n`;
+  prompt += `   - ✅ 각 질문이 글에서 실제로 답해지는가?\n`;
+  prompt += `   - ✅ 어느 섹션에서 답하는가?\n`;
+  prompt += `   [보편성]\n`;
+  prompt += `   - ✅ 특정 사례가 아닌, 대부분이 공감할 수 있는 질문인가?\n\n`;
+  
+  prompt += `🔟 메인키워드 "${keyword}" 자연스러움:\n`;
+  prompt += `   [횟수 적정성]\n`;
+  prompt += `   - ✅ 4~10회 범위 (권장 5~6회)\n`;
+  prompt += `   - ❌ 3회 이하: 부족, 5~6회로 조정\n`;
+  prompt += `   - ⚠️ 11~19회: 약간 많음 (통과)\n`;
+  prompt += `   - ❌ 20회 이상: 키워드 스터핑 (5~6회로 줄이기)\n`;
+  prompt += `   [자연스러움]\n`;
+  prompt += `   - ✅ 억지스럽지 않은가?\n`;
+  prompt += `   - ✅ 문맥에 자연스럽게 녹아 있는가?\n`;
+  prompt += `   [분산 배치]\n`;
+  prompt += `   - ✅ 제목 1회, 서론 1~2회, 본론 2~3회, 결론 1회\n\n`;
+  
+  prompt += `1️⃣1️⃣ 시공 프로세스 정확성:\n`;
+  prompt += `   [시공 유형 명확성]\n`;
+  prompt += `   - ✅ LED 리폼/전체 교체/실링팬 설치 구분 명확\n`;
+  prompt += `   [작업 순서 정확성]\n`;
+  prompt += `   - ✅ 전원 차단 → 확산판 분리 → 형광등 철거 → 안정기 제거\n`;
+  prompt += `   - ✅ 배선 점검 → LED 모듈 장착 → SMPS 설치 → 점등 테스트\n`;
+  prompt += `   [기술 용어 정확성]\n`;
+  prompt += `   - ✅ LED 모듈, LED 전용 안정기(SMPS), 조도(lux) 정확 사용\n\n`;
+  
+  prompt += `1️⃣2️⃣ 광고/정보 균형:\n`;
+  prompt += `   [홍보 비율]\n`;
+  prompt += `   - ✅ 전체 문단 중 홍보 20% 이하 (레퍼런스 2 + CTA 3)\n`;
+  prompt += `   - ⚠️ 21~30%: 약간 많음 (통과)\n`;
+  prompt += `   - ❌ 31% 이상: 과도 (줄이기)\n`;
+  prompt += `   [실질적 정보 풍부성]\n`;
+  prompt += `   - ✅ 소비전력 비교, 조도 변화, 작업 과정, 기술 설명\n`;
+  prompt += `   [자연스러운 배치]\n`;
+  prompt += `   - ✅ "저희 휴명" 과도한 반복 없음\n\n`;
+  
+  prompt += `1️⃣3️⃣ 현장감 & 공감:\n`;
+  prompt += `   ["내 이야기" 느낌]\n`;
+  prompt += `   - ✅ 독자가 자신의 상황으로 느낄 수 있는가?\n`;
+  prompt += `   - ✅ 보편적 고민을 다루는가?\n`;
+  prompt += `   [생생한 현장 묘사]\n`;
+  prompt += `   - ✅ 시각적 이미지가 떠오르는가?\n`;
+  prompt += `   - ✅ 작업 과정이 눈에 보이는가?\n`;
+  prompt += `   [고객 감정선]\n`;
+  prompt += `   - ✅ 불편함 (문제) → 해결 (작업) → 만족감 (결과)\n\n`;
+  
+  prompt += `1️⃣4️⃣ 지침 준수 종합:\n`;
+  prompt += `   [핵심 품질 5가지]\n`;
+  prompt += `   - ✅ 위의 9~13번 모두 우수\n`;
+  prompt += `   [메인 지침서 규칙]\n`;
+  prompt += `   - ✅ E-A-T 원칙 (전문성, 권위성, 신뢰성)\n`;
+  prompt += `   - ✅ 스토리텔링 (문제→해결→변화)\n`;
+  prompt += `   - ✅ 데이터 + 감성 균형\n`;
+  prompt += `   - ✅ 휴먼라이크 4대 요소 (구어체, 체언 종결, 감탄사, 문장 길이)\n`;
+  prompt += `   - ✅ 유사문서 방지 (표현 순환)\n\n`;
+  
+  prompt += `→ Level 3 미흡 발견 시: 개선 후 최종 출력\n\n`;
+  
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `⚠️⚠️⚠️ 최종 확인 및 출력 형식\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `✅ Level 1 치명적 형식: 모두 통과?\n`;
+  prompt += `✅ Level 2 필수 형식: 모두 포함?\n`;
+  prompt += `✅ Level 3 핵심 품질: 모두 우수?\n\n`;
+  
+  prompt += `⚠️ 문제 발견 시 즉시 수정하여 최종 버전 출력!\n`;
+  prompt += `⚠️ 수정 없이 그냥 출력하면 안 됩니다!\n\n`;
+  
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `⭐⭐⭐ 필수 출력 형식\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `반드시 다음 순서로 출력하세요:\n\n`;
+  
+  prompt += `1️⃣ 먼저 완성된 포스팅 전체를 마크다운으로 출력\n\n`;
+  
+  prompt += `2️⃣ 그 다음 구분선을 출력:\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  prompt += `🔍 자가 평가 결과\n`;
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `3️⃣ 자가평가 결과를 다음 형식으로 출력:\n\n`;
+  
+  prompt += `[Level 1] 치명적 형식 체크\n`;
+  prompt += `[1/8] LED 수명 금지표현 체크... ✅ 통과 (또는 ❌ 수정함)\n`;
+  prompt += `[2/8] 후킹 질문 물음표 체크... ✅ 통과 (또는 ❌ 수정함)\n\n`;
+  
+  prompt += `[Level 2] 필수 형식 체크\n`;
+  prompt += `[3/8] 사진 업로드 체크... ✅ 통과\n`;
+  prompt += `[4/8] 고정 이미지 4종 체크... ✅ 통과\n`;
+  prompt += `[5/8] LED 수명 배치 2곳 체크... ✅ 통과\n`;
+  prompt += `[6/8] 회사 레퍼런스 2문단 체크... ✅ 통과\n`;
+  prompt += `[7/8] CTA 존재 체크... ✅ 통과\n`;
+  prompt += `[8/8] H3 구조 체크... ✅ 통과\n\n`;
+  
+  prompt += `[Level 3] 핵심 품질 평가\n`;
+  prompt += `[1/6] 후킹 질문 품질 평가... 우수 (또는 양호/보통)\n`;
+  prompt += `[2/6] 메인키워드 자연스러움 평가... 우수 (6회, 자연스러움)\n`;
+  prompt += `[3/6] 시공 프로세스 정확성 평가... 우수\n`;
+  prompt += `[4/6] 광고/정보 균형 평가... 우수 (16%)\n`;
+  prompt += `[5/6] 현장감 & 공감 평가... 우수\n`;
+  prompt += `[6/6] 지침 준수 종합 평가... 우수\n\n`;
+  
+  prompt += `💡 최종 평가\n`;
+  prompt += `종합 점수: XX/100점\n`;
+  prompt += `강점: (3~5개 항목)\n`;
+  prompt += `개선 여지: (있다면 1~2개 항목)\n`;
+  prompt += `결론: 제출 가능한 고품질 포스팅입니다. (또는 개선 권장)\n\n`;
+  
+  prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  prompt += `⚠️⚠⚠️ 중요:\n`;
+  prompt += `- 포스팅 본문과 평가 결과 사이에 반드시 구분선을 넣으세요!\n`;
+  prompt += `- 평가 결과는 상세하게 작성하세요 (단순 ✅만 나열 X)\n`;
+  prompt += `- Level 3는 각 항목마다 간단한 근거 설명 포함\n\n`;
   
   prompt += `지금 바로 작성을 시작하세요!`;
   
@@ -571,12 +737,307 @@ function createContentArray(textPrompt, images) {
   return contentArray;
 }
 
-/**
- * ⭐ Claude 응답 파싱 (마크다운만)
- */
 function parseResponse(content) {
+  // 자가평가 구분선으로 분리
+  const evalMarker = '🔍 자가 평가 결과';
+  
+  if (content.includes(evalMarker)) {
+    const parts = content.split(evalMarker);
+    
+    return {
+      markdown: parts[0].trim().replace(/━+/g, '').trim(),  // 구분선 제거
+      evaluation: evalMarker + parts[1].trim()  // 평가 결과 (구분선 포함)
+    };
+  }
+  
+  // 평가 결과가 없는 경우 (구분선이 없으면)
   return {
-    markdown: content.trim()
+    markdown: content.trim(),
+    evaluation: null
+  };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 🔍 자동 검증 & 재작성 시스템 v4.5
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+function fullValidation(markdown, keyword, data) {
+  const issues = [];
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // [Level 1] 치명적 형식 (2개)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  // 1. LED 수명 금지표현
+  const prohibited = ['10년', '반영구', '50,000시간', '50000시간', '평생', '무걱정'];
+  const foundProhibited = prohibited.filter(term => markdown.includes(term));
+  if (foundProhibited.length > 0) {
+    issues.push({
+      level: 1,
+      category: 'LED 수명 금지표현',
+      problem: `금지 표현 발견: ${foundProhibited.join(', ')}`,
+      solution: '모두 삭제하고 "2년 AS 보증"으로 교체'
+    });
+  }
+  
+  // 2. 후킹 질문 물음표
+  const h2Lines = markdown.match(/^## .+$/gm) || [];
+  const questionMarks = h2Lines.filter(line => line.includes('?'));
+  if (questionMarks.length < 3) {
+    issues.push({
+      level: 1,
+      category: '후킹 질문',
+      problem: `물음표로 끝나는 질문이 ${questionMarks.length}개 (3개 필요)`,
+      solution: 'H2 제목 3개를 모두 "?"로 끝나는 질문형으로 변경'
+    });
+  }
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // [Level 2] 필수 형식 (주요 항목만)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  // 3. 고정 이미지
+  const hasCompanyGif = markdown.includes('[GIF: 업체소개.gif]');
+  const hasThumbnail = markdown.includes('[썸네일: 대표이미지.jpg]');
+  if (!hasCompanyGif || !hasThumbnail) {
+    const missing = [];
+    if (!hasCompanyGif) missing.push('업체소개.gif');
+    if (!hasThumbnail) missing.push('대표이미지.jpg');
+    issues.push({
+      level: 2,
+      category: '고정 이미지 누락',
+      problem: `누락: ${missing.join(', ')}`,
+      solution: '회사 레퍼런스 섹션에 [GIF: 업체소개.gif]와 [썸네일: 대표이미지.jpg] 추가'
+    });
+  }
+  
+  // 4. LED 수명 배치
+  const asCount = (markdown.match(/2년\s*AS|2년\s*무상\s*AS/g) || []).length;
+  if (asCount < 2) {
+    issues.push({
+      level: 2,
+      category: 'LED 수명 배치',
+      problem: `"2년 AS" 언급 ${asCount}회 (2회 필요)`,
+      solution: '소비전력 표 다음과 CTA 부분에 각 1회씩 배치'
+    });
+  }
+  
+  // 5. H3 구조 (사례형만)
+  if (data.postingType === '사례형') {
+    const hasWrongH3 = markdown.includes('### H3 ');
+    if (hasWrongH3) {
+      issues.push({
+        level: 2,
+        category: 'H3 형식 오류',
+        problem: '"H3" 텍스트가 제목에 포함됨',
+        solution: '"### H3 설치 전" → "### 설치 전"으로 수정 (모든 H3 제목)'
+      });
+    }
+  }
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // [Level 3] 핵심 품질 (주요 항목만)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  
+  // 6. 메인키워드 자연스러움
+  const keywordMatches = markdown.match(new RegExp(keyword, 'g')) || [];
+  const keywordCount = keywordMatches.length;
+  
+  if (keywordCount < 4) {
+    issues.push({
+      level: 3,
+      category: '메인키워드 부족',
+      problem: `"${keyword}" 횟수: ${keywordCount}회 (최소 4회, 권장 5~6회)`,
+      solution: '제목, 서론, 본론, 결론에 자연스럽게 분산 배치하여 5~6회로 조정'
+    });
+  } else if (keywordCount > 10) {
+    issues.push({
+      level: 3,
+      category: '메인키워드 과다',
+      problem: `"${keyword}" 횟수: ${keywordCount}회 (권장 5~6회)`,
+      solution: '억지로 반복된 부분을 제거하여 5~6회로 줄이기'
+    });
+  }
+  
+  // 7. 광고/정보 균형
+  const companyMentions = (markdown.match(/저희|휴명|당사/g) || []).length;
+  const totalLines = markdown.split('\n').filter(line => line.trim().length > 0).length;
+  const adRatio = (companyMentions / totalLines) * 100;
+  
+  if (adRatio > 15) {
+    issues.push({
+      level: 3,
+      category: '광고/정보 균형',
+      problem: `홍보 언급 비율 과다 (약 ${Math.round(adRatio)}%, 권장 10% 이하)`,
+      solution: '회사 홍보 문구를 줄이고 실질적 정보(소비전력, 조도, 작업 과정) 비중 증가'
+    });
+  }
+  
+  return issues;
+}
+
+function createDetailedFeedback(issues, keyword) {
+  let feedback = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  feedback += `🔍 자가평가 결과 - 수정 필요 사항\n`;
+  feedback += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+  
+  // Level별로 그룹화
+  const level1 = issues.filter(i => i.level === 1);
+  const level2 = issues.filter(i => i.level === 2);
+  const level3 = issues.filter(i => i.level === 3);
+  
+  if (level1.length > 0) {
+    feedback += `[Level 1] 치명적 형식 (${level1.length}개) ⚠️\n\n`;
+    level1.forEach((issue, idx) => {
+      feedback += `${idx + 1}. ${issue.category}\n`;
+      feedback += `   문제: ${issue.problem}\n`;
+      feedback += `   해결: ${issue.solution}\n\n`;
+    });
+  }
+  
+  if (level2.length > 0) {
+    feedback += `[Level 2] 필수 형식 (${level2.length}개)\n\n`;
+    level2.forEach((issue, idx) => {
+      feedback += `${idx + 1}. ${issue.category}\n`;
+      feedback += `   문제: ${issue.problem}\n`;
+      feedback += `   해결: ${issue.solution}\n\n`;
+    });
+  }
+  
+  if (level3.length > 0) {
+    feedback += `[Level 3] 핵심 품질 (${level3.length}개)\n\n`;
+    level3.forEach((issue, idx) => {
+      feedback += `${idx + 1}. ${issue.category}\n`;
+      feedback += `   문제: ${issue.problem}\n`;
+      feedback += `   해결: ${issue.solution}\n\n`;
+    });
+  }
+  
+  feedback += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+  feedback += `✍️ 수정 지시:\n`;
+  feedback += `위의 모든 문제를 수정한 완전한 포스팅을 다시 작성하세요.\n`;
+  feedback += `수정 사항 설명은 출력하지 말고, 수정된 최종 포스팅만 마크다운으로 출력하세요.\n`;
+  
+  return feedback;
+}
+
+async function regenerateWithFeedback(originalMarkdown, feedback, keyword) {
+  const prompt = `다음은 생성된 네이버 블로그 포스팅입니다:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 원본 포스팅
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${originalMarkdown}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${feedback}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️ 중요:
+- 위의 모든 문제를 수정한 완전한 포스팅을 다시 작성하세요
+- 수정 사항 설명은 하지 마세요
+- 수정된 최종 포스팅만 마크다운 형식으로 출력하세요
+- 원본의 좋은 부분은 유지하고 문제 부분만 수정하세요
+
+지금 바로 수정된 포스팅을 출력하세요:`;
+
+  const message = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 8000,
+    messages: [
+      {
+        role: 'user',
+        content: prompt
+      }
+    ]
+  });
+  
+  return message.content[0].text.trim();
+}
+
+async function generateWithAutoRevision(data, images) {
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 1️⃣ 첫 번째 생성
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  console.log('🚀 1차 포스팅 생성 중...\n');
+  
+  const textPrompt = createTextPrompt(data, images);
+  const contentArray = createContentArray(textPrompt, images);
+  
+  const message1 = await anthropic.messages.create({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 8000,
+    messages: [{ role: 'user', content: contentArray }]
+  });
+  
+  const fullContent1 = message1.content[0].text.trim();
+  const parsed1 = parseResponse(fullContent1);
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 2️⃣ 완전한 검증 (Level 1~3)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔍 자동 검증 시스템 실행 중...');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  
+  const issues = fullValidation(parsed1.markdown, data.keyword, data);
+  
+  if (issues.length === 0) {
+    console.log('✅ 검증 통과! 모든 기준 충족!');
+    console.log('   - Level 1: 통과 ✅');
+    console.log('   - Level 2: 통과 ✅');
+    console.log('   - Level 3: 통과 ✅\n');
+    
+    return {
+      success: true,
+      markdown: parsed1.markdown,
+      evaluation: parsed1.evaluation,  // ⭐ 평가 결과 추가
+      attempts: 1,
+      issues: []
+    };
+  }
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 3️⃣ 문제 발견 → 1회 재작성
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  console.log(`⚠️ ${issues.length}개 문제 발견:`);
+  issues.forEach(issue => {
+    console.log(`   [Level ${issue.level}] ${issue.category}: ${issue.problem}`);
+  });
+  
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔄 자동 수정 중... (1회만)');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+  
+  const feedback = createDetailedFeedback(issues, data.keyword);
+  const fullContent2 = await regenerateWithFeedback(parsed1.markdown, feedback, data.keyword);
+  const parsed2 = parseResponse(fullContent2);
+  
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // 4️⃣ 2차 검증 (참고용)
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  const issues2 = fullValidation(parsed2.markdown, data.keyword, data);
+  
+  if (issues2.length === 0) {
+    console.log('✅ 2차 검증 통과! 모든 문제 해결!');
+    console.log('   - Level 1: 통과 ✅');
+    console.log('   - Level 2: 통과 ✅');
+    console.log('   - Level 3: 통과 ✅\n');
+  } else {
+    console.log(`ℹ️ 2차 검증: ${issues2.length}개 항목 남음 (사용자 수동 수정 가능)`);
+    issues2.forEach(issue => {
+      console.log(`   [Level ${issue.level}] ${issue.category}`);
+    });
+    console.log();
+  }
+  
+  return {
+    success: true,
+    markdown: parsed2.markdown,
+    evaluation: parsed2.evaluation,  // ⭐ 평가 결과 추가
+    attempts: 2,
+    issues: issues2
   };
 }
 
@@ -588,18 +1049,32 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok',
     message: '서버 정상 작동 중',
-    guidelines: '핵심 규칙 10KB',
-    version: 'v4.0 (Claude 대화 기능)',
+    version: 'v4.6.1 (이미지 분석 강화!)',
+    guidelines: {
+      main_guideline: guidelineManager.guidelines.mainGuideline ? 'LOADED ⭐⭐⭐' : 'MISSING ❌',
+      loaded: Object.keys(guidelineManager.guidelines).length,
+      total_size: `${Math.round(Object.values(guidelineManager.guidelines).join('').length / 1024)}KB`
+    },
     features: [
-      '⚡ 마크다운만 생성 (50%+ 속도 향상)',
+      '⭐⭐⭐ NEW: 이미지 분석 명시적 강화! (현장감 UP!)',
+      '⭐⭐⭐ NEW: Before/After 비교 시각화!',
+      '⭐⭐⭐ NEW: 독자가 현장에 있는 듯한 생생한 묘사!',
+      '✅ Claude 자가평가 (14개 항목)',
+      '✅ 서버 레벨 자동 검증 (이중 안전장치)',
+      '✅ 구체적 피드백 기반 자동 재작성',
+      '✅ 평가 결과를 프론트엔드에 표시',
+      '✅ 메인 지침서 v8.2 최우선 로드',
+      '✅ 자가평가 시스템 v2.0 완전 통합',
+      '⚡ 최대 시간: 60초 (1차 30초 + 재작성 30초)',
+      '🎯 퀄리티 목표: 98%+ (이미지 분석 + 자가평가 + 서버 검증!)',
+      '⭐ guidelines 폴더 11개 파일 동적 로드',
+      '⭐ 상황별 필요한 가이드만 선택',
+      '⭐ 디밍스위치 아파트 자동 감지',
       'HTML은 다운로드 시 즉시 변환',
-      '후킹 질문 형식 수정 (## only)',
-      '이미지 Claude 전송 ✅',
+      '이미지 Claude 전송 + 분석 ✅',
       '한글 파일명 지원 ✅',
-      '특이사항 입력란 추가 ✅',
-      '특이사항 활용 지침 강화 ✅',
       'Claude 대화로 포스팅 수정 ✅',
-      'API 비용 50% 절감 ✅'
+      '스트리밍 실시간 응답 ✅'
     ]
   });
 });
@@ -607,7 +1082,7 @@ app.get('/api/health', (req, res) => {
 app.post('/api/generate', upload.array('images'), async (req, res) => {
   try {
     console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📨 포스팅 생성 요청');
+    console.log('📨 포스팅 생성 요청 (v4.5)');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
     const data = parseInputData(req);
@@ -624,53 +1099,29 @@ app.post('/api/generate', upload.array('images'), async (req, res) => {
       });
     }
     const images = processImages(req.files);
-    console.log(`✅ 이미지 처리 완료: ${images.length}개`);
+    console.log(`✅ 이미지 처리 완료: ${images.length}개\n`);
     
-    console.log(`\n📝 프롬프트에 포함될 파일명 목록:`);
-    if (images.length > 0) {
-      images.forEach((img, idx) => {
-        console.log(`   ${idx + 1}. ${img.name}`);
-      });
-    } else {
-      console.log('   (파일명 없음)');
-    }
+    // ⭐⭐⭐ 자동 검증 & 1회 재작성 시스템
+    const result = await generateWithAutoRevision(data, images);
     
-    const textPrompt = createTextPrompt(data, images);
-    console.log(`✅ 텍스트 프롬프트 생성 완료: ${Math.round(textPrompt.length / 1024)}KB`);
-    
-    const contentArray = createContentArray(textPrompt, images);
-    console.log(`✅ Claude API 요청 content 생성 완료: ${contentArray.length}개 요소`);
-    
-    console.log('\n🤖 Claude API 호출 시작 (마크다운만 생성)...\n');
-    
-    const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 8000,  // ⭐ 마크다운만 생성하므로 토큰 절반
-      messages: [
-        {
-          role: 'user',
-          content: contentArray
-        }
-      ]
-    });
-    
-    const fullContent = message.content[0].text;
-    const { markdown } = parseResponse(fullContent);
-    
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('✅ 포스팅 생성 완료');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`   - 마크다운: ${markdown.length}자`);
-    console.log(`   - 키워드 횟수: ${(markdown.match(new RegExp(data.keyword, 'g')) || []).length}회`);
-    console.log(`   - 이미지 전송: ${images.length}장`);
+    console.log('✅ 포스팅 생성 완료 (v4.5)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`   - 시도 횟수: ${result.attempts}회`);
+    console.log(`   - 마크다운: ${result.markdown.length}자`);
+    console.log(`   - 키워드 횟수: ${(result.markdown.match(new RegExp(data.keyword, 'g')) || []).length}회`);
+    console.log(`   - 남은 문제: ${result.issues.length}개`);
+    console.log(`   - 자동 검증: 완료 ⭐`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
     res.json({
       success: true,
-      content: markdown,  // ⭐ 단일 필드로 전송
+      content: result.markdown,
+      attempts: result.attempts,
+      remainingIssues: result.issues,
       stats: {
-        length: markdown.length,
-        keywordCount: (markdown.match(new RegExp(data.keyword, 'g')) || []).length,
+        length: result.markdown.length,
+        keywordCount: (result.markdown.match(new RegExp(data.keyword, 'g')) || []).length,
         imageCount: images.length
       }
     });
@@ -683,6 +1134,148 @@ app.post('/api/generate', upload.array('images'), async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ⚡ 포스팅 생성 API (스트리밍 - 진행 상황 실시간 표시)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+app.post('/api/generate-stream', upload.array('images'), async (req, res) => {
+  try {
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('⚡ 포스팅 생성 요청 (스트리밍)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
+    // SSE 헤더 설정
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    
+    const sendProgress = (message, step) => {
+      res.write(`data: ${JSON.stringify({ type: 'progress', message, step })}\n\n`);
+    };
+    
+    // 1️⃣ 데이터 파싱
+    sendProgress('📋 데이터 파싱 중...', 1);
+    const data = parseInputData(req);
+    console.log('✅ 데이터 파싱 완료');
+    
+    // 2️⃣ 이미지 처리
+    sendProgress(`🖼️ 이미지 처리 중... (${req.files ? req.files.length : 0}장)`, 2);
+    const images = processImages(req.files);
+    console.log(`✅ 이미지 처리 완료: ${images.length}개`);
+    
+    // 3️⃣ 가이드라인 선택
+    sendProgress('📚 가이드라인 선택 중...', 3);
+    const selectedGuidelines = guidelineManager.selectRelevantGuidelines(data);
+    console.log(`✅ 선택된 가이드: ${selectedGuidelines.length}개`);
+    
+    // 4️⃣ 프롬프트 작성
+    sendProgress('📝 프롬프트 작성 중...', 4);
+    const textPrompt = createTextPrompt(data, images);
+    const contentArray = createContentArray(textPrompt, images);
+    console.log(`✅ 프롬프트 생성 완료`);
+    
+    // 5️⃣ 1차 생성
+    sendProgress('🤖 Claude에게 1차 요청 중...', 5);
+    sendProgress('✍️ 포스팅 작성 중... (30초 예상)', 6);
+    
+    const message1 = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: contentArray }]
+    });
+    
+    const fullContent1 = message1.content[0].text.trim();
+    const parsed1 = parseResponse(fullContent1);  // ⭐ 평가 결과 분리
+    console.log('✅ 1차 생성 완료');
+    
+    // 6️⃣ 검증
+    sendProgress('🔍 자동 검증 중... (Level 1~3)', 7);
+    const issues = fullValidation(parsed1.markdown, data.keyword, data);
+    
+    if (issues.length === 0) {
+      // ✅ 통과!
+      sendProgress('✅ 검증 통과! 모든 기준 충족!', 8);
+      console.log('✅ 검증 통과!');
+      
+      res.write(`data: ${JSON.stringify({ 
+        type: 'done',
+        success: true,
+        content: parsed1.markdown,
+        evaluation: parsed1.evaluation,  // ⭐ 평가 결과 추가
+        attempts: 1,
+        remainingIssues: [],
+        stats: {
+          length: parsed1.markdown.length,
+          keywordCount: (parsed1.markdown.match(new RegExp(data.keyword, 'g')) || []).length,
+          imageCount: images.length
+        }
+      })}\n\n`);
+      
+      res.end();
+      return;
+    }
+    
+    // 7️⃣ 문제 발견
+    sendProgress(`⚠️ ${issues.length}개 문제 발견 - 자동 수정 시작`, 8);
+    console.log(`⚠️ ${issues.length}개 문제 발견`);
+    issues.forEach(issue => {
+      sendProgress(`   • [Level ${issue.level}] ${issue.category}`, 8);
+      console.log(`   [Level ${issue.level}] ${issue.category}: ${issue.problem}`);
+    });
+    
+    // 8️⃣ 재작성
+    sendProgress('🔄 수정 요청 생성 중...', 9);
+    const feedback = createDetailedFeedback(issues, data.keyword);
+    
+    sendProgress('🤖 Claude에게 2차 요청 중...', 10);
+    sendProgress('✍️ 재작성 중... (30초 예상)', 11);
+    
+    const fullContent2 = await regenerateWithFeedback(parsed1.markdown, feedback, data.keyword);
+    const parsed2 = parseResponse(fullContent2);  // ⭐ 평가 결과 분리
+    console.log('✅ 2차 생성 완료');
+    
+    // 9️⃣ 2차 검증
+    sendProgress('🔍 2차 검증 중...', 12);
+    const issues2 = fullValidation(parsed2.markdown, data.keyword, data);
+    
+    if (issues2.length === 0) {
+      sendProgress('✅ 2차 검증 통과! 모든 문제 해결!', 13);
+      console.log('✅ 2차 검증 통과!');
+    } else {
+      sendProgress(`ℹ️ ${issues2.length}개 항목 남음 (사용자 수동 수정 가능)`, 13);
+      console.log(`ℹ️ ${issues2.length}개 항목 남음`);
+    }
+    
+    // 🔟 완료
+    sendProgress('✅ 완료!', 14);
+    
+    res.write(`data: ${JSON.stringify({ 
+      type: 'done',
+      success: true,
+      content: parsed2.markdown,
+      evaluation: parsed2.evaluation,  // ⭐ 평가 결과 추가
+      attempts: 2,
+      remainingIssues: issues2,
+      stats: {
+        length: parsed2.markdown.length,
+        keywordCount: (parsed2.markdown.match(new RegExp(data.keyword, 'g')) || []).length,
+        imageCount: images.length
+      }
+    })}\n\n`);
+    
+    res.end();
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ 스트리밍 완료');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
+  } catch (error) {
+    console.error('\n❌ 에러 발생:', error.message);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+    res.end();
   }
 });
 
@@ -702,7 +1295,6 @@ app.post('/api/revise', async (req, res) => {
     console.log(`💬 수정 요청: ${revisionRequest}`);
     console.log(`📊 대화 히스토리: ${chatHistory ? chatHistory.length : 0}개`);
     
-    // 수정 요청 프롬프트 생성
     let prompt = `당신은 네이버 블로그 포스팅 수정 전문가입니다.\n\n`;
     
     prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -775,7 +1367,6 @@ app.post('/api/revise', async (req, res) => {
     
     const fullResponse = message.content[0].text;
     
-    // 응답 파싱
     const explanationMatch = fullResponse.match(/<설명>([\s\S]*?)<\/설명>/);
     const revisedMatch = fullResponse.match(/<수정된포스팅>([\s\S]*?)<\/수정된포스팅>/);
     
@@ -807,7 +1398,7 @@ app.post('/api/revise', async (req, res) => {
 });
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ⚡ 포스팅 수정 API (스트리밍 버전 - 빠른 응답!)
+// ⚡ 포스팅 수정 API (스트리밍 버전)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 app.post('/api/revise-stream', async (req, res) => {
@@ -818,12 +1409,10 @@ app.post('/api/revise-stream', async (req, res) => {
     
     const { currentContent, revisionRequest, chatHistory, originalData } = req.body;
     
-    // SSE 헤더 설정
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     
-    // 프롬프트 생성 (동일)
     let prompt = `당신은 네이버 블로그 포스팅 수정 전문가입니다.\n\n`;
     
     prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -847,7 +1436,7 @@ app.post('/api/revise-stream', async (req, res) => {
       prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       prompt += `💬 이전 대화 내역\n`;
       prompt += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
-      chatHistory.slice(-3).forEach((chat) => {  // 최근 3개만
+      chatHistory.slice(-3).forEach((chat) => {
         if (chat.role === 'user') {
           prompt += `사용자: ${chat.content}\n`;
         }
@@ -874,7 +1463,6 @@ app.post('/api/revise-stream', async (req, res) => {
     
     console.log(`\n⚡ Claude API 스트리밍 호출 중...\n`);
     
-    // ⭐ 스트리밍 방식으로 호출
     const stream = await anthropic.messages.stream({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 8000,
@@ -888,22 +1476,18 @@ app.post('/api/revise-stream', async (req, res) => {
     
     let fullResponse = '';
     
-    // 스트리밍 데이터 수신 및 전송
     stream.on('text', (text) => {
       fullResponse += text;
-      // SSE 형식으로 클라이언트에 전송
       res.write(`data: ${JSON.stringify({ type: 'chunk', text })}\n\n`);
     });
     
     stream.on('end', () => {
-      // 응답 파싱
       const explanationMatch = fullResponse.match(/<설명>([\s\S]*?)<\/설명>/);
       const revisedMatch = fullResponse.match(/<수정된포스팅>([\s\S]*?)<\/수정된포스팅>/);
       
       const explanation = explanationMatch ? explanationMatch[1].trim() : '포스팅을 수정했습니다.';
       const revisedContent = revisedMatch ? revisedMatch[1].trim() : fullResponse;
       
-      // 완료 메시지 전송
       res.write(`data: ${JSON.stringify({ 
         type: 'done', 
         explanation, 
@@ -935,23 +1519,35 @@ app.post('/api/revise-stream', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🚀 서버 시작! v4.1 (스트리밍 + 레이아웃 개선)');
+  console.log('🚀 서버 시작! v4.6.1 (이미지 분석 강화!)');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`📍 http://localhost:${PORT}`);
-  console.log('📘 핵심 규칙 기반 (10KB)');
-  console.log('🎯 예상 품질: 75-85%');
-  console.log('⚡ 속도 향상: 50%+ (마크다운만 생성)');
-  console.log('🖼️ 이미지 Claude 전송: ✅');
-  console.log('📍 후킹 질문 형식: ## only (> 금지)');
-  console.log('🇰🇷 한글 파일명 지원: ✅');
-  console.log('✨ 특이사항 입력란: ✅');
-  console.log('🎯 특이사항 활용 지침: ✅');
-  console.log('💬 Claude 대화로 수정: ✅');
-  console.log('⚡ 스트리밍 실시간 응답: ✅');
-  console.log('📐 미리보기+채팅 동시 표시: ✅');
-  console.log('💰 API 비용: 50% 절감');
-  console.log('📋 HTML 변환: 프론트엔드에서 즉시');
+  console.log(`📚 가이드라인: ${Object.keys(guidelineManager.guidelines).length}개 로드됨`);
+  console.log(`⭐⭐⭐ 메인 지침서: ${guidelineManager.guidelines.mainGuideline ? '로드됨!' : '없음 ❌'}`);
+  console.log(`📏 총 크기: ${Math.round(Object.values(guidelineManager.guidelines).join('').length / 1024)}KB`);
+  console.log('🎯 예상 품질: 98%+ (이미지 분석 + 자가평가 + 서버 검증!)');
+  console.log('⏱️ 최대 시간: 60초 (1차 30초 + 재작성 30초)');
+  console.log('');
+  console.log('✨ v4.6.1 핵심 기능:');
+  console.log('   ⭐⭐⭐ 이미지 분석 명시적 강화! (현장감 UP!)');
+  console.log('   ⭐⭐⭐ Before/After 비교 시각화!');
+  console.log('   ⭐⭐⭐ 독자가 현장에 있는 듯한 생생한 묘사!');
+  console.log('   ⭐⭐⭐ Claude 자가평가 (14개 항목)');
+  console.log('   ⭐⭐⭐ 서버 레벨 자동 검증 (이중 안전장치)');
+  console.log('');
+  console.log('✅ 이미지 분석 항목:');
+  console.log('   🖼️ 설치 전: 밝기, 색상, 어두운 영역, 분위기');
+  console.log('   🔧 작업 중: 작업 내용, 부품, 도구, 천장 상태');
+  console.log('   ✨ 설치 후: 밝기 변화, 빛 확산, 색온도, Before/After');
+  console.log('');
+  console.log('✅ 기존 기능:');
+  console.log('   📘 메인 지침서 v8.2 최우선 로드');
+  console.log('   📋 자가평가 시스템 v2.0 완전 통합');
+  console.log('   📚 guidelines 폴더 11개 파일 자동 로드');
+  console.log('   🎯 상황별 필요한 가이드만 선택');
+  console.log('   🔍 디밍스위치 아파트 자동 감지');
+  console.log('   🖼️ 이미지 Claude 전송 + 분석');
+  console.log('   💬 Claude 대화로 수정');
+  console.log('   ⚡ 스트리밍 실시간 응답');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
 });
-
